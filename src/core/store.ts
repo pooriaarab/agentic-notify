@@ -30,6 +30,8 @@ export interface Store {
   /** Replace only when the stored doc still equals `expected`. Equality is structural: key order does not matter. Atomic. */
   replaceIf(collection: string, id: string, expected: Doc, next: Doc): Promise<boolean>;
   delete(collection: string, id: string): Promise<void>;
+  /** Delete many ids in one round trip where the backend allows. Missing ids are ignored. An empty list does nothing. */
+  deleteMany(collection: string, ids: string[]): Promise<void>;
   query(collection: string, query?: Query): Promise<Page>;
 }
 
@@ -124,6 +126,11 @@ export class MemoryStore implements Store {
 
   async delete(collection: string, id: string): Promise<void> {
     this.coll(collection).delete(id);
+  }
+
+  async deleteMany(collection: string, ids: string[]): Promise<void> {
+    const c = this.coll(collection);
+    for (const id of ids) c.delete(id);
   }
 
   async query(collection: string, query: Query = {}): Promise<Page> {

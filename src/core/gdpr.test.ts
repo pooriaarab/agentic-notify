@@ -50,7 +50,7 @@ describe("export and erase", () => {
     await store.put("notifications", "bad", { id: "bad", recipientKey: "human:ana", createdAt: "x" });
     expect((await createNotifier({ store }).erase(ana)).notifications).toBe(1);
     await store.put("notifications", "stuck", { id: "stuck", recipientKey: "human:ana", createdAt: 1 });
-    store.delete = async () => {};
+    store.deleteMany = async () => {};
     await expect(createNotifier({ store }).erase(ana)).rejects.toThrow(/did not finish/);
   });
 
@@ -59,9 +59,9 @@ describe("export and erase", () => {
     const notifier = createNotifier({ store });
     await notifier.send(input(ana));
     let injected = false;
-    const del = store.delete.bind(store);
-    store.delete = async (c, id) => {
-      await del(c, id);
+    const del = store.deleteMany.bind(store);
+    store.deleteMany = async (c, ids) => {
+      await del(c, ids);
       if (!injected && c === "notifications") {
         injected = true;
         await notifier.send(input(ana, "late"));
@@ -121,7 +121,7 @@ describe("retention", () => {
     const notifier = createNotifier({ store, now: () => 5000, retentionMs: 10 });
     await store.put("notifications", "old", { id: "old", recipientKey: "human:ana", createdAt: 1, type: "t", recipient: ana, resource: { kind: "d", id: "1" }, actor: ana, body: "b", readAt: null });
     await store.put("notifications", "bad", { id: "bad", recipientKey: "human:ana", createdAt: "x" });
-    store.delete = async () => {};
+    store.deleteMany = async () => {};
     await expect(notifier.sweep()).rejects.toThrow(/did not finish/);
     await expect(notifier.exportData(ana)).rejects.toThrow();
   });

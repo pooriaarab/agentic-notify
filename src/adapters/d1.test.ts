@@ -32,6 +32,32 @@ storeContract(
   async () => new D1Store(db),
 );
 
+describe("d1 batch delete", () => {
+  test("deleteMany sends bounded batches, not one query per row", async () => {
+    await db.prepare("DELETE FROM notify_docs").bind().run();
+    const calls: number[] = [];
+    const counting: D1Like = {
+      prepare: (sql) => db.prepare(sql),
+      batch: (stmts) => {
+        calls.push(stmts.length);
+        return db.batch(stmts);
+      },
+    };
+    const store = new D1Store(counting);
+    const ids = Array.from({ length: 250 }, (_, i) => `id${i}`);
+    const ins = db.prepare("INSERT INTO notify_docs (collection, id, doc) VALUES (?, ?, ?)");
+    await db.batch(ids.map((id) => ins.bind("c", id, '{"v":1}')));
+    await store.deleteMany("c", ids);
+    expect(calls).toEqual([100, 100, 50]);
+    expect((await store.query("c")).items).toEqual([]);
+  });
+
+  test("a failing batch rejects instead of reporting success", async () => {
+    const store = new D1Store({ ...db, prepare: (sql) => db.prepare(sql), batch: async () => { throw new Error("d1 down"); } });
+    await expect(store.deleteMany("c", ["a"])).rejects.toThrow(/d1 down/);
+  });
+});
+
 describe("notifier on d1", () => {
   test("send, list, mark read, export and erase work on the real adapter", async () => {
     await db.prepare("DELETE FROM notify_docs").bind().run();

@@ -11,15 +11,20 @@ import {
 } from "../core/store.js";
 
 /** The slice of the Cloudflare D1 binding this adapter uses. */
-export interface D1Like {
-  prepare(sql: string): {
-    bind(...values: unknown[]): {
-      first<T = unknown>(): Promise<T | null>;
-      all<T = unknown>(): Promise<{ results: T[] }>;
-      run(): Promise<{ meta: { changes?: number } }>;
-    };
-  };
+export interface D1Statement {
+  first<T = unknown>(): Promise<T | null>;
+  all<T = unknown>(): Promise<{ results: T[] }>;
+  run(): Promise<{ meta: { changes?: number } }>;
 }
+
+export interface D1Like {
+  prepare(sql: string): { bind(...values: unknown[]): D1Statement };
+  /** Runs the statements in one round trip, as one transaction. Takes statements from `bind`. */
+  batch(statements: D1Statement[]): Promise<unknown[]>;
+}
+
+// One batch is one Worker subrequest. Keep each batch small and bounded.
+const BATCH_SIZE = 100;
 
 const FIELD = /^[A-Za-z_][A-Za-z0-9_]{0,63}$/;
 const SCHEMA = `CREATE TABLE IF NOT EXISTS notify_docs (
@@ -92,6 +97,13 @@ export class D1Store implements Store {
 
   async delete(collection: string, id: string): Promise<void> {
     await this.db.prepare("DELETE FROM notify_docs WHERE collection = ? AND id = ?").bind(collection, id).run();
+  }
+
+  async deleteMany(collection: string, ids: string[]): Promise<void> {
+    const sql = this.db.prepare("DELETE FROM notify_docs WHERE collection = ? AND id = ?");
+    for (let i = 0; i < ids.length; i += BATCH_SIZE) {
+      await this.db.batch(ids.slice(i, i + BATCH_SIZE).map((id) => sql.bind(collection, id)));
+    }
   }
 
   async query(collection: string, query: Query = {}): Promise<Page> {
