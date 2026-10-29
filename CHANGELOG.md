@@ -14,7 +14,7 @@ Patch. No change to the SDK, CLI, MCP or HTTP shape.
 
 Minor. New subpath, no change to the SDK, CLI, MCP or HTTP shape.
 
-- `agentic-notify/account` exports `notifyAccount` with `exportAccount` and `eraseAccount`, so a host can export and erase a subject without reading the storage layout. The shape is provisional until `agentic-identity` ships the `AccountPackage` contract.
+- `agentic-notify/account` exports `notifyAccount` with `exportAccount` and `eraseAccount`, so a host can export and erase a subject without reading the storage layout. The shape is provisional. `notifyAccount` does not yet satisfy `AccountPackage<NotifyAccountDeps>` at the type level, because its export records are `Record<string, unknown>` and the contract needs `Json`.
 
 ## 0.4.3
 

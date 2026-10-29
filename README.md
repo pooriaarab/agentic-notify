@@ -124,7 +124,7 @@ Library users: `createWorker` takes `auth` in place of `resolver`. `authorizeSen
 
 ## Account export and erase
 
-A host that runs account export and erase across many packages calls `notifyAccount` from `agentic-notify/account`. It has `exportAccount(subject, { notifier })` and `eraseAccount(subject, { notifier })`, so the host does not read the storage layout. The subject is an id and a kind. A person or a user token is a `human` recipient. Every agent kind is an `agent` recipient. The export has plain JSON in `notifications` and `preferences`. The erase removes both and returns counts. A repeat of the erase counts zero. Notifications that name the subject only as actor stay with their recipients. The shape is provisional: it is the `AccountPackage` contract that a later `agentic-identity` release adds to `agentic-identity/account`.
+A host that runs account export and erase across many packages calls `notifyAccount` from `agentic-notify/account`. It has `exportAccount(subject, { notifier })` and `eraseAccount(subject, { notifier })`, so the host does not read the storage layout. The subject is an id and a kind. A person or a user token is a `human` recipient. Every agent kind is an `agent` recipient. The export has plain JSON in `notifications` and `preferences`. The erase removes both and returns counts. A repeat of the erase counts zero. Notifications that name the subject only as actor stay with their recipients. The shape is provisional. `agentic-identity` 0.10.0 ships the `AccountPackage` contract in `agentic-identity/account`, and `notifyAccount` does not yet type-check against it. Its records are `Record<string, unknown>`, not `Json`, so `createAccountRegistry().register(notifyAccount, ...)` fails to compile.
 
 ## Testing
 

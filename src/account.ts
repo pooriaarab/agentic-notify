@@ -1,6 +1,7 @@
 // The package's side of the account contract: a host calls `exportAccount` and `eraseAccount`
 // and never reads the storage layout. The shape is provisional. `agentic-identity` 0.10.0 ships
-// `AccountPackage` in `agentic-identity/account`, and this shape is not yet checked against it.
+// `AccountPackage` in `agentic-identity/account`. This shape does not type-check against it yet:
+// `exportAccount` returns `Record<string, unknown>[]`, and `AccountRecords` needs `Json[]`.
 // The `AccountApp` of earlier releases is a different contract, and this does not fit it.
 import type { PrincipalKind } from "agentic-identity";
 import type { Notifier } from "./core/service.js";
