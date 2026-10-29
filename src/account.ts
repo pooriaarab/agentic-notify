@@ -2,7 +2,7 @@
 // and never reads the storage layout. The shape is provisional: it is the contract that a later
 // `agentic-identity` release adds to `agentic-identity/account` as `AccountPackage`. The `AccountApp`
 // of earlier releases is a different contract, and this does not fit it.
-import { PRINCIPAL_KINDS, type PrincipalKind } from "agentic-identity";
+import type { PrincipalKind } from "agentic-identity";
 import type { Notifier } from "./core/service.js";
 import { recipientSchema, type Recipient } from "./core/types.js";
 
@@ -29,13 +29,27 @@ export interface NotifyAccount {
 // Through JSON, so the records are what a file would hold: a key with no value is dropped, not left as `undefined`.
 const plain = (value: unknown): JsonRecord[] => JSON.parse(JSON.stringify(value)) as JsonRecord[];
 
+function roleKind(kind: unknown): Recipient["kind"] | undefined {
+  switch (kind) {
+    case "human":
+    case "user_token":
+      return "human";
+    case "agent_of_human":
+    case "agent_of_agent":
+    case "agent":
+      return "agent";
+    default:
+      return undefined;
+  }
+}
+
 /** A person or a user token is a `human` recipient. Every agent kind is an `agent` recipient. */
 function recipientOf(subject: Subject): Recipient {
-  const known = (PRINCIPAL_KINDS as readonly unknown[]).includes(subject?.kind);
-  const kind = subject?.kind === "human" || subject?.kind === "user_token" ? "human" : "agent";
+  // Each known kind is named. A kind that is not listed here is refused, never guessed as an agent.
+  const kind = roleKind(subject?.kind);
   const parsed = recipientSchema.safeParse({ kind, id: subject?.id });
   // The same id rule as a recipient, so a too long id gives this error and not a schema error.
-  if (!known || !parsed.success || parsed.data.id.trim() === "") throw new TypeError("subject needs an id and a known kind");
+  if (kind === undefined || !parsed.success || parsed.data.id.trim() === "") throw new TypeError("subject needs an id and a known kind");
   return parsed.data;
 }
 
