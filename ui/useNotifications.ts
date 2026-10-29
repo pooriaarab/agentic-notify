@@ -53,7 +53,8 @@ function isNotification(n: unknown): n is Notification {
 }
 
 export function describeError(error: unknown, action = "Notifications could not be loaded. Try again."): string {
-  if (error instanceof ApiError && (error.status === 401 || error.status === 403)) return "The token was not accepted.";
+  if (error instanceof ApiError && error.status === 401) return "The token was not accepted.";
+  if (error instanceof ApiError && error.status === 403) return "The token cannot read notifications. It may lack the notify:read scope.";
   if (error instanceof ApiError && error.status === 429) return "Too many requests. Wait a moment, then try again.";
   if (error instanceof ApiError && error.status >= 400 && error.status < 500) return "The server refused the request.";
   return action;

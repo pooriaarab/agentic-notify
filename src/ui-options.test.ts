@@ -28,7 +28,7 @@ describe("ui options", () => {
 
   test("a refused token is named, and other failures are not called success", () => {
     expect(describeError(new ApiError(401, "unauthorized"))).toBe("The token was not accepted.");
-    expect(describeError(new ApiError(403, "forbidden"))).toBe("The token was not accepted.");
+    expect(describeError(new ApiError(403, "forbidden"))).toBe("The token cannot read notifications. It may lack the notify:read scope.");
     expect(describeError(new ApiError(400, "bad"))).toBe("The server refused the request.");
     expect(describeError(new TypeError("fetch failed"))).toContain("could not be loaded");
   });
