@@ -87,7 +87,7 @@ All routes sit under `/api/v1` and need `Authorization: Bearer <token>`. `GET /h
 
 ## Identity
 
-Auth is a port: `PrincipalResolver` turns a request into `{ kind: "human" | "agent", id }` or null. `createStaticTokenResolver` is a small example. To use another identity system, call `createWorker({ resolver })` with your own resolver. A caller reads and changes only its own notifications.
+Auth is a port: `PrincipalResolver` turns a request into `{ kind: "human" | "agent", id }` or null. `createStaticTokenResolver` is a small example. To use another identity system, call `createWorker({ resolver })` with your own resolver. Import `createWorker` from `agentic-notify/worker`. A caller reads and changes only its own notifications.
 
 ## Privacy
 
@@ -96,6 +96,24 @@ Auth is a port: `PrincipalResolver` turns a request into `{ kind: "human" | "age
 - The Worker reads `NOTIFY_REGION` (`eu`, `us` or `unknown`, default `eu`). The D1 adapter refuses a database that does not report a serving region in that area. For local runs without a real D1, set `NOTIFY_REGION=unknown`.
 - Logs hold ids, channel names and error names only. They never hold bodies or addresses.
 - Erase removes a recipient's own notifications and preferences. Notifications that name the person only as actor stay with their recipients.
+
+## Testing
+
+`agentic-notify/testing` helps you test a store adapter and your own code.
+
+`runStoreContract(make)` runs the store contract suite. Call it at the top level of a vitest test
+file, and install `vitest` 3 or later. The factory makes a new store for each call. A store made
+without `shared` must start empty. Stores made with the same `shared` value must see the same data.
+So the factory passes `options` to the store:
+
+```ts
+import { createMemoryStore } from "agentic-notify";
+import { runStoreContract } from "agentic-notify/testing";
+
+runStoreContract((options) => createMemoryStore(options));
+```
+
+`TestEmailAdapter` records each message in memory and can fail a set number of sends.
 
 ## Limits
 
