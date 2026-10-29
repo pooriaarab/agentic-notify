@@ -2,17 +2,19 @@
 import { VERSION } from "./version.js";
 
 const HELP = `agentic-notify-mcp ${VERSION}
-Usage: agentic-notify-mcp [--help | -h | --version | -V]
+Usage: agentic-notify-mcp [mcp] [--help | -h | --version | -V]
 
 Runs the MCP server on stdio. An MCP client starts it.
 `;
 
 // The `mcp` word may come first, as the package CLI takes it: `agentic-notify-mcp mcp --help`.
-const [first, second] = process.argv.slice(2);
-const flag = first === "mcp" ? second : first;
-if (flag === "--version" || flag === "-V") {
+const argv = process.argv.slice(2);
+const args = argv[0] === "mcp" ? argv.slice(1) : argv;
+const has = (...names: string[]) => args.some((a) => names.includes(a));
+
+if (has("--version", "-V")) {
   process.stdout.write(`${VERSION}\n`);
-} else if (flag === "--help" || flag === "-h") {
+} else if (has("--help", "-h")) {
   process.stdout.write(HELP);
 } else {
   // Loaded only when serving, so --help and --version never pay for the server's imports.
