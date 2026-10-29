@@ -4,8 +4,8 @@ export const PACKAGE_NAME = "agentic-notify";
 
 export { createNotifier, NotFoundError } from "./core/service.js";
 export type { Notifier, NotifierOptions, SendResult, ListOptions, ListResult } from "./core/service.js";
-export { MemoryStore } from "./core/store.js";
-export type { Store, Query, Page, Doc, Scalar } from "./core/store.js";
+export { createMemoryStore } from "agentic-identity";
+export type { Store, StoreOps, Query, Page, Doc, Scalar } from "agentic-identity";
 export { CHANNELS, DEFAULT_CHANNELS, defaultPreferences, recipientKey } from "./core/types.js";
 export type {
   Actor,
@@ -26,6 +26,6 @@ export { createEmailChannel } from "./delivery/email.js";
 export type { EmailMessage, EmailPort, EmailChannelOptions } from "./delivery/email.js";
 export { DeliveryError } from "./delivery/types.js";
 export type { DeliveryChannel, Logger } from "./delivery/types.js";
-export { D1Store, migrateD1 } from "./adapters/d1.js";
-export type { D1Like } from "./adapters/d1.js";
+export { createD1Store, D1_SCHEMA } from "agentic-identity/cloudflare";
+export type { D1Like } from "agentic-identity/cloudflare";
 export type { RecipientExport } from "./core/gdpr.js";

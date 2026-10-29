@@ -1,5 +1,6 @@
 import { createApp, type AppOptions } from "./api.js";
-import { D1Store, migrateD1, type D1Like } from "./adapters/d1.js";
+import { parseRegion } from "agentic-identity";
+import { createD1Store, D1_SCHEMA, type D1Like } from "agentic-identity/cloudflare";
 import { createStaticTokenResolver, type PrincipalResolver } from "./auth.js";
 import { createNotifier } from "./core/service.js";
 import { VERSION } from "./version.js";
@@ -10,6 +11,8 @@ export interface WorkerEnv {
   DB?: D1Like;
   /** Secret. JSON map of bearer token (32 bytes or more) to principal. */
   NOTIFY_TOKENS?: string;
+  /** Data region of the store: "eu", "us" or "unknown". Default "eu". */
+  NOTIFY_REGION?: string;
   /** Retention window in days. Unset keeps notifications. */
   NOTIFY_RETENTION_DAYS?: string;
 }
@@ -30,10 +33,10 @@ export function createWorker(config: WorkerConfig) {
 
   async function buildNotifier(env: WorkerEnv) {
     if (!env.DB) return null;
-    await migrateD1(env.DB);
+    await env.DB.prepare(D1_SCHEMA).bind().run();
     const days = env.NOTIFY_RETENTION_DAYS === undefined ? undefined : Number(env.NOTIFY_RETENTION_DAYS);
     return createNotifier({
-      store: new D1Store(env.DB),
+      store: createD1Store(env.DB, { region: parseRegion(env.NOTIFY_REGION ?? "eu") }),
       retentionMs: days === undefined ? undefined : days * 86_400_000,
     });
   }

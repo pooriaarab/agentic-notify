@@ -1,6 +1,11 @@
 import { describe, expect, test } from "vitest";
 import { createNotifier } from "./service.js";
-import { MemoryStore } from "./store.js";
+import { createMemoryStore, type Store } from "agentic-identity";
+
+/** A store whose deletes report success and do nothing. */
+function deleteIsNoop(store: Store): Store {
+  return { ...store, transaction: (fn) => store.transaction((tx) => fn({ ...tx, delete: async () => {} })) };
+}
 import type { Recipient, SendInput } from "./types.js";
 
 const ana: Recipient = { kind: "human", id: "ana" };
@@ -16,7 +21,7 @@ const input = (recipient: Recipient, body = "hi"): SendInput => ({
 function setup(retentionMs?: number) {
   let t = 1_000_000;
   const clock = { advance: (ms: number) => (t += ms) };
-  const notifier = createNotifier({ store: new MemoryStore(), now: () => t, retentionMs });
+  const notifier = createNotifier({ store: createMemoryStore(), now: () => t, retentionMs });
   return { notifier, clock };
 }
 
@@ -46,35 +51,37 @@ describe("export and erase", () => {
   });
 
   test("erase still works when a doc has a bad createdAt, and fails loudly on a store whose delete does nothing", async () => {
-    const store = new MemoryStore();
+    const store = createMemoryStore();
     await store.put("notifications", "bad", { id: "bad", recipientKey: "human:ana", createdAt: "x" });
     expect((await createNotifier({ store }).erase(ana)).notifications).toBe(1);
     await store.put("notifications", "stuck", { id: "stuck", recipientKey: "human:ana", createdAt: 1 });
-    store.deleteMany = async () => {};
-    await expect(createNotifier({ store }).erase(ana)).rejects.toThrow(/did not finish/);
+    await expect(createNotifier({ store: deleteIsNoop(store) }).erase(ana)).rejects.toThrow(/did not finish/);
   });
 
   test("erase catches a notification that arrives during the delete", async () => {
-    const store = new MemoryStore();
+    const store = createMemoryStore();
     const notifier = createNotifier({ store });
     await notifier.send(input(ana));
     let injected = false;
-    const del = store.deleteMany.bind(store);
-    store.deleteMany = async (c, ids) => {
-      await del(c, ids);
-      if (!injected && c === "notifications") {
-        injected = true;
-        await notifier.send(input(ana, "late"));
-      }
+    const racing: Store = {
+      ...store,
+      transaction: async (fn) => {
+        const out = await store.transaction(fn);
+        if (!injected) {
+          injected = true;
+          await notifier.send(input(ana, "late"));
+        }
+        return out;
+      },
     };
-    expect((await notifier.erase(ana)).notifications).toBe(2);
+    expect((await createNotifier({ store: racing }).erase(ana)).notifications).toBe(2);
     expect((await notifier.exportData(ana)).notifications).toEqual([]);
   });
 });
 
 describe("retention", () => {
   test("a doc with a bad createdAt is left alone, not swept", async () => {
-    const store = new MemoryStore();
+    const store = createMemoryStore();
     let t = 1000;
     const notifier = createNotifier({ store, now: () => t, retentionMs: 10 });
     await notifier.send(input(ana, "old"));
@@ -99,7 +106,7 @@ describe("retention", () => {
   });
 
   test("a bad doc does not stop the sweep of more than a page of expired ones", async () => {
-    const store = new MemoryStore();
+    const store = createMemoryStore();
     let t = 1000;
     const notifier = createNotifier({ store, now: () => t, retentionMs: 10 });
     for (let i = 0; i < 450; i++) await notifier.send(input(ana));
@@ -110,19 +117,18 @@ describe("retention", () => {
   });
 
   test("a full page of bad docs makes the sweep throw, not succeed", async () => {
-    const store = new MemoryStore();
+    const store = createMemoryStore();
     for (let i = 0; i < 200; i++) await store.put("notifications", `bad${i}`, { id: `bad${i}`, createdAt: "x" });
     const notifier = createNotifier({ store, now: () => 5000, retentionMs: 10 });
     await expect(notifier.sweep()).rejects.toThrow(/blocked/);
   });
 
   test("sweep fails on a store whose delete does nothing, and export fails loudly on a bad doc", async () => {
-    const store = new MemoryStore();
+    const store = createMemoryStore();
     const notifier = createNotifier({ store, now: () => 5000, retentionMs: 10 });
     await store.put("notifications", "old", { id: "old", recipientKey: "human:ana", createdAt: 1, type: "t", recipient: ana, resource: { kind: "d", id: "1" }, actor: ana, body: "b", readAt: null });
     await store.put("notifications", "bad", { id: "bad", recipientKey: "human:ana", createdAt: "x" });
-    store.deleteMany = async () => {};
-    await expect(notifier.sweep()).rejects.toThrow(/did not finish/);
+    await expect(createNotifier({ store: deleteIsNoop(store), now: () => 5000, retentionMs: 10 }).sweep()).rejects.toThrow(/did not finish/);
     await expect(notifier.exportData(ana)).rejects.toThrow();
   });
 
@@ -141,7 +147,7 @@ describe("retention", () => {
     clock.advance(10 ** 12);
     expect(await notifier.sweep()).toBe(0);
     for (const bad of [0, -5, 1.5, Number.NaN]) {
-      expect(() => createNotifier({ store: new MemoryStore(), retentionMs: bad })).toThrow(RangeError);
+      expect(() => createNotifier({ store: createMemoryStore(), retentionMs: bad })).toThrow(RangeError);
     }
   });
 });

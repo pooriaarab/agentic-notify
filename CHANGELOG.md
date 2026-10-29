@@ -4,9 +4,15 @@ All notable changes to this package are listed here.
 
 ## Unreleased
 
-- `Store` has a new required method, `deleteMany(collection, ids)`. Custom adapters must add it.
-- `D1Like` has a new required method, `batch(statements)`. The D1 adapter uses it to delete in batches of 100.
-- Erase and the retention sweep delete in bulk.
+Breaking. The package now uses the `Store` port from `agentic-identity` (`^0.4.0`) and drops its own copy.
+
+- `Store`, `Query`, `Page`, `Doc` and `Scalar` now come from `agentic-identity`. `Store` has `region` and `transaction`. It has no `create`, `replaceIf` or `deleteMany`. Query items are `{ id, data }`, not `{ id, doc }`. A custom adapter must implement the identity port and pass its contract suite.
+- `MemoryStore` is gone. Use `createMemoryStore()`.
+- `D1Store` and `migrateD1` are gone. Use `createD1Store(db, { region })` and run `D1_SCHEMA` once (the Worker does this itself). Both are re-exported from `agentic-notify`.
+- The D1 table is now `store_docs`, not `notify_docs`. Existing rows are not copied. Copy them with SQL before you upgrade a live database.
+- `agentic-notify/testing`: `storeContract` is gone. Use `runStoreContract` (re-exported from `agentic-identity/testing`).
+- The Worker reads `NOTIFY_REGION` (default `eu`). The D1 adapter fails closed when the database does not report a serving region. Set `NOTIFY_REGION=unknown` for local runs.
+- Send and mark-read run in transactions. Erase and the retention sweep delete in batches of 100.
 
 ## 0.1.0
 

@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { eraseRecipient, exportRecipient, NOTES, PREFS, sweepBefore } from "./gdpr.js";
-import type { Store } from "./store.js";
+import type { Doc, Store } from "agentic-identity";
 import {
   DEFAULT_CHANNELS,
   defaultPreferences,
@@ -56,11 +56,11 @@ export class NotFoundError extends Error {
   }
 }
 
-function toDoc(n: Notification): Record<string, unknown> {
-  return { ...n, recipientKey: recipientKey(n.recipient) };
+function toDoc(n: Notification): Doc {
+  return { ...n, recipientKey: recipientKey(n.recipient) } as Doc;
 }
 
-function fromDoc(doc: Record<string, unknown>): Notification {
+function fromDoc(doc: Doc): Notification {
   const { recipientKey: _drop, ...rest } = doc;
   return notificationSchema.parse(rest);
 }
@@ -102,9 +102,10 @@ export function createNotifier(options: NotifierOptions) {
       readAt: null,
     });
     if (!channels.includes("inbox")) return { notification, stored: false, channels, muted: false };
-    if (!(await store.create(NOTES, notification.id, toDoc(notification)))) {
-      throw new Error("notification id collision");
-    }
+    await store.transaction(async (tx) => {
+      if (await tx.get(NOTES, notification.id)) throw new Error("notification id collision");
+      await tx.put(NOTES, notification.id, toDoc(notification));
+    });
     return { notification, stored: true, channels, muted: false };
   }
 
@@ -112,36 +113,45 @@ export function createNotifier(options: NotifierOptions) {
     const r = recipientSchema.parse(recipient);
     const where: Record<string, string | null> = { recipientKey: recipientKey(r) };
     if (opts.unreadOnly) where.readAt = null;
-    const page = await store.query(NOTES, {
-      where,
-      orderBy: { field: "createdAt", direction: "desc" },
-      limit: opts.limit,
-      cursor: opts.cursor,
-    });
-    return { items: page.items.map((i) => fromDoc(i.doc)), nextCursor: page.nextCursor };
+    let page;
+    try {
+      page = await store.query(NOTES, {
+        where,
+        orderBy: { field: "createdAt", direction: "desc" },
+        limit: opts.limit,
+        cursor: opts.cursor,
+      });
+    } catch (error) {
+      // The port throws a plain Error for a cursor it cannot read. That is caller input: report it as a RangeError.
+      if (opts.cursor !== undefined && error instanceof Error && /cursor/i.test(error.message)) {
+        throw new RangeError("bad cursor");
+      }
+      throw error;
+    }
+    return { items: page.items.map((i) => fromDoc(i.data)), nextCursor: page.nextCursor ?? null };
   }
 
-  async function load(recipient: Recipient, id: string) {
-    const r = recipientSchema.parse(recipient);
-    const doc = await store.get(NOTES, id);
+  function check(doc: Doc | null, recipient: Recipient): Doc {
     // A record that belongs to someone else looks like a missing one.
-    if (!doc || doc.recipientKey !== recipientKey(r)) throw new NotFoundError();
+    if (!doc || doc.recipientKey !== recipientKey(recipient)) throw new NotFoundError();
     return doc;
   }
 
   async function get(recipient: Recipient, id: string): Promise<Notification> {
-    return fromDoc(await load(recipient, id));
+    const r = recipientSchema.parse(recipient);
+    return fromDoc(check(await store.get(NOTES, id), r));
   }
 
   async function markReadOnce(recipient: Recipient, id: string): Promise<{ notification: Notification; won: boolean }> {
-    for (let attempt = 0; attempt < 5; attempt++) {
-      const doc = await load(recipient, id);
-      const n = fromDoc(doc);
+    const r = recipientSchema.parse(recipient);
+    // The transaction runs again when the doc changed, so only one racing caller wins.
+    return store.transaction(async (tx) => {
+      const n = fromDoc(check(await tx.get(NOTES, id), r));
       if (n.readAt !== null) return { notification: n, won: false };
       const next = notificationSchema.parse({ ...n, readAt: now() });
-      if (await store.replaceIf(NOTES, id, doc, toDoc(next))) return { notification: next, won: true };
-    }
-    throw new Error("could not mark read: too much contention");
+      await tx.put(NOTES, id, toDoc(next));
+      return { notification: next, won: true };
+    });
   }
 
   async function markRead(recipient: Recipient, id: string): Promise<Notification> {

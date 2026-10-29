@@ -1,6 +1,6 @@
 import { describe, expect, test } from "vitest";
 import { createNotifier, NotFoundError } from "./service.js";
-import { MemoryStore } from "./store.js";
+import { createMemoryStore } from "agentic-identity";
 import type { Recipient, SendInput } from "./types.js";
 
 const alice: Recipient = { kind: "human", id: "alice" };
@@ -9,7 +9,7 @@ const bot: Recipient = { kind: "agent", id: "alice" }; // same id, other kind
 function setup() {
   let t = 1000;
   let n = 0;
-  const notifier = createNotifier({ store: new MemoryStore(), now: () => ++t, newId: () => `n${++n}` });
+  const notifier = createNotifier({ store: createMemoryStore(), now: () => ++t, newId: () => `n${++n}` });
   return notifier;
 }
 
@@ -154,7 +154,7 @@ describe("bad data", () => {
   });
 
   test("a bad clock or id source fails before anything is stored", async () => {
-    for (const make of [() => createNotifier({ store: new MemoryStore(), now: () => Number.NaN }), () => createNotifier({ store: new MemoryStore(), newId: () => "" })]) {
+    for (const make of [() => createNotifier({ store: createMemoryStore(), now: () => Number.NaN }), () => createNotifier({ store: createMemoryStore(), newId: () => "" })]) {
       const n = make();
       await expect(n.send(input())).rejects.toThrow();
       expect((await n.list(alice)).items).toEqual([]);

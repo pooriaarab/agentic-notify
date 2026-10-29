@@ -1,4 +1,4 @@
-import type { Store } from "./store.js";
+import type { Store } from "agentic-identity";
 import { notificationSchema, preferencesSchema, recipientKey, type Notification, type Preferences, type Recipient } from "./types.js";
 
 export const NOTES = "notifications";
@@ -8,6 +8,18 @@ export interface RecipientExport {
   recipient: Recipient;
   preferences: Preferences | null;
   notifications: Notification[];
+}
+
+// One transaction per batch keeps each round trip bounded. Missing ids are ignored.
+const DELETE_BATCH = 100;
+
+async function deleteAll(store: Store, ids: string[]): Promise<void> {
+  for (let i = 0; i < ids.length; i += DELETE_BATCH) {
+    const batch = ids.slice(i, i + DELETE_BATCH);
+    await store.transaction(async (tx) => {
+      for (const id of batch) await tx.delete(NOTES, id);
+    });
+  }
 }
 
 async function* notificationDocs(store: Store, recipient: Recipient, ordered = true) {
@@ -30,7 +42,7 @@ export async function exportRecipient(store: Store, recipient: Recipient): Promi
   const notifications: Notification[] = [];
   // Page by id so a doc with a bad createdAt cannot block the export, then sort here.
   for await (const item of notificationDocs(store, recipient, false)) {
-    const { recipientKey: _drop, ...rest } = item.doc;
+    const { recipientKey: _drop, ...rest } = item.data;
     notifications.push(notificationSchema.parse(rest));
   }
   notifications.sort((a, b) => a.createdAt - b.createdAt || (a.id < b.id ? -1 : 1));
@@ -52,7 +64,7 @@ export async function eraseRecipient(store: Store, recipient: Recipient): Promis
     const ids: string[] = [];
     for await (const item of notificationDocs(store, recipient, false)) ids.push(item.id);
     if (ids.length === 0) break;
-    await store.deleteMany(NOTES, ids);
+    await deleteAll(store, ids);
     removed += ids.length;
   }
   await store.delete(PREFS, recipientKey(recipient));
@@ -72,14 +84,14 @@ export async function sweepBefore(store: Store, cutoff: number): Promise<number>
   for (;;) {
     // Oldest first. Each pass starts again at the front, so no cursor ever sits on a mixed-type field.
     const page = await store.query(NOTES, { orderBy: { field: "createdAt", direction: "asc" }, limit });
-    const old = page.items.filter((i) => typeof i.doc.createdAt === "number" && i.doc.createdAt < cutoff);
+    const old = page.items.filter((i) => typeof i.data.createdAt === "number" && i.data.createdAt < cutoff);
     // A row we already deleted that comes back means deletes have no effect. Fail, do not loop.
     if (old.some((i) => gone.has(i.id))) throw new Error("retention sweep did not finish: deletes had no effect");
-    await store.deleteMany(NOTES, old.map((i) => i.id));
+    await deleteAll(store, old.map((i) => i.id));
     for (const item of old) gone.add(item.id);
     removed += old.length;
     if (old.length > 0) continue;
-    if (page.items.length < limit || page.items.some((i) => typeof i.doc.createdAt === "number")) return removed;
+    if (page.items.length < limit || page.items.some((i) => typeof i.data.createdAt === "number")) return removed;
     throw new Error("retention sweep blocked: a full page of notifications has no usable createdAt");
   }
 }

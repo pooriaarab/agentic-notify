@@ -1,6 +1,6 @@
 import { describe, expect, test } from "vitest";
 import { createNotifier } from "../core/service.js";
-import { MemoryStore } from "../core/store.js";
+import { createMemoryStore } from "agentic-identity";
 import type { Recipient, SendInput } from "../core/types.js";
 import { createDispatcher } from "./dispatch.js";
 import { createEmailChannel, TestEmailAdapter } from "./email.js";
@@ -17,7 +17,7 @@ const input = (over: Partial<SendInput> = {}): SendInput => ({
 });
 
 function setup(webhook: DeliveryChannel) {
-  const notifier = createNotifier({ store: new MemoryStore() });
+  const notifier = createNotifier({ store: createMemoryStore() });
   const email = new TestEmailAdapter();
   const logs: string[] = [];
   const dispatcher = createDispatcher({
@@ -59,7 +59,7 @@ describe("dispatcher", () => {
   });
 
   test("a missing target or channel is reported as skipped, not as sent", async () => {
-    const notifier = createNotifier({ store: new MemoryStore() });
+    const notifier = createNotifier({ store: createMemoryStore() });
     const none = createDispatcher({
       notifier,
       channels: { email: createEmailChannel({ port: new TestEmailAdapter(), resolveAddress: () => null }) },

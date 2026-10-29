@@ -35,7 +35,7 @@ beforeAll(async () => {
     script: bundle.outputFiles[0]!.text,
     compatibilityDate: "2026-01-01",
     d1Databases: { DB: "notify-e2e" },
-    bindings: { NOTIFY_TOKENS: JSON.stringify(TOKENS) },
+    bindings: { NOTIFY_TOKENS: JSON.stringify(TOKENS), NOTIFY_REGION: "unknown" },
   });
   url = (await mf.ready).toString();
 }, 60_000);

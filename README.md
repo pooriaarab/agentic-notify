@@ -5,7 +5,7 @@
 
 Notifications for humans and agents: in-app inbox, email and webhook delivery, with a CLI, API, MCP server and SDK.
 
-**Status: 0.1.0, first release.** Works today: the notification model, preferences and mute, digest, an in-memory store and a D1 store (both pass one contract suite), signed webhook and email delivery through a dispatcher, an HTTP API in a Worker, an SDK, a CLI, MCP tools, per-recipient export and erase, and a retention sweep. Not done: a real email provider adapter, webhook endpoint management, and a web UI.
+**Status: 0.1.0, first release.** Works today: the notification model, preferences and mute, digest, a store port from agentic-identity with its memory and D1 adapters, signed webhook and email delivery through a dispatcher, an HTTP API in a Worker, an SDK, a CLI, MCP tools, per-recipient export and erase, and a retention sweep. Not done: a real email provider adapter, webhook endpoint management, and a web UI.
 
 ## Install
 
@@ -18,9 +18,9 @@ npm install agentic-notify
 Library, with the memory store:
 
 ```ts
-import { createNotifier, MemoryStore } from "agentic-notify";
+import { createNotifier, createMemoryStore } from "agentic-notify";
 
-const notifier = createNotifier({ store: new MemoryStore() });
+const notifier = createNotifier({ store: createMemoryStore() });
 await notifier.send({
   recipient: { kind: "agent", id: "helper" },
   type: "approval_request",
@@ -78,7 +78,8 @@ Auth is a port: `PrincipalResolver` turns a request into `{ kind: "human" | "age
 ## Privacy
 
 - Export and erase work per recipient. `retentionMs` plus `sweep()` (or a cron trigger on the Worker, with `NOTIFY_RETENTION_DAYS`) deletes old notifications.
-- Erase and sweep delete in bulk with `Store.deleteMany`. The D1 adapter sends it as `db.batch` calls of up to 100 rows, so a large erase does not cost one query per row.
+- Erase and sweep delete in batches of 100 inside one transaction each, so a large erase does not cost one query per row.
+- The Worker reads `NOTIFY_REGION` (`eu`, `us` or `unknown`, default `eu`). The D1 adapter refuses a database that does not report a serving region in that area. For local runs without a real D1, set `NOTIFY_REGION=unknown`.
 - Logs hold ids, channel names and error names only. They never hold bodies or addresses.
 - Erase removes a recipient's own notifications and preferences. Notifications that name the person only as actor stay with their recipients.
 
