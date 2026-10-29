@@ -12,6 +12,14 @@ Minor. New export, no change to the SDK, CLI, MCP or HTTP shape.
 - The demo Worker serves a demo page at `/ui/`. Run `npm run build:ui` before `npm run deploy:demo` (the script does it).
 - New browser tests with Playwright and axe (`npm run test:ui`).
 
+## 0.5.1
+
+Patch. No change to the SDK, CLI, MCP or HTTP shape.
+
+- `agentic-identity` is `^0.10.0`. It was `^0.8.0`. The lockfile follows. The 0.9.0 and 0.10.0 additions are not used here.
+- A host whose range does not include 0.10.x (for example `^0.8.0` or `^0.9.0`) gets two copies of `agentic-identity`. Two copies can hold separate classes, so an object from one copy can fail a type check in the other. Move the host's pin to `^0.10.0`.
+- The header comment in `src/account.ts` now says that `agentic-identity` 0.10.0 ships `AccountPackage`. It is a comment-only change.
+
 ## 0.5.0
 
 Minor. New subpath, no change to the SDK, CLI, MCP or HTTP shape.

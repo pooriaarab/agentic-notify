@@ -78,7 +78,7 @@
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.23.0",
     "agentic-design": "^0.5.0",
-    "agentic-identity": "^0.8.0",
+    "agentic-identity": "^0.10.0",
     "hono": "^4.13.14",
     "zod": "^4.6.7"
   },
