@@ -17,4 +17,4 @@ npx agentic-notify send --to human:ana --type mention --resource doc:d1 --body "
 
 ## Use the MCP server
 
-Start the server with `npx agentic-notify mcp`. Tools: list_notifications, read_notification, mark_read, mark_all_read, get_preferences, set_preferences, unread_count, digest, export_data, erase_data, send_notification.
+Start the server with `npx agentic-notify mcp`. Tools: ping, list_notifications, read_notification, mark_read, mark_all_read, get_preferences, set_preferences, unread_count, digest, export_data, erase_data, send_notification.

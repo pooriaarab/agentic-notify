@@ -5,7 +5,7 @@
 
 Notifications for humans and agents: in-app inbox, email and webhook delivery, with a CLI, API, MCP server and SDK.
 
-**Status: 0.2.1.** Breaking for 0.1.0 code and databases, see the CHANGELOG upgrade steps. Works today: the notification model, preferences and mute, digest, a store port from agentic-identity with its memory and D1 adapters, signed webhook and email delivery through a dispatcher, an HTTP API in a Worker, an SDK, a CLI, MCP tools, per-recipient export and erase, and a retention sweep. Not done: a real email provider adapter, webhook endpoint management, and a web UI.
+**Status: 0.3.0.** Breaking for 0.1.0 code and databases, see the CHANGELOG upgrade steps. Works today: the notification model, preferences and mute, digest, a store port from agentic-identity with its memory and D1 adapters, signed webhook and email delivery through a dispatcher, an HTTP API in a Worker, an SDK, a CLI, MCP tools, per-recipient export and erase, and a retention sweep. Not done: a real email provider adapter, webhook endpoint management, and a web UI.
 
 ## Live demo
 
@@ -59,10 +59,12 @@ CLI, SDK and MCP talk to that Worker:
 export NOTIFY_URL=https://notify.example.org NOTIFY_TOKEN=...
 npx agentic-notify send --to human:ana --type mention --resource doc:d1 --body "Look at this"
 npx agentic-notify list --unread
-npx agentic-notify mcp      # tools: list_notifications, read_notification, mark_read,
+npx agentic-notify mcp      # tools: ping, list_notifications, read_notification, mark_read,
                             # mark_all_read, get_preferences, set_preferences, unread_count, digest,
                             # export_data, erase_data, send_notification
 ```
+
+The MCP server needs `NOTIFY_URL` and `NOTIFY_TOKEN`. Without them only `ping` works. `erase_data` needs `confirm: true`.
 
 ```ts
 import { createClient } from "agentic-notify/sdk";
