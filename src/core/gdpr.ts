@@ -28,10 +28,12 @@ async function* notificationDocs(store: Store, recipient: Recipient, ordered = t
 /** Everything held about one recipient, as plain JSON. */
 export async function exportRecipient(store: Store, recipient: Recipient): Promise<RecipientExport> {
   const notifications: Notification[] = [];
-  for await (const item of notificationDocs(store, recipient)) {
+  // Page by id so a doc with a bad createdAt cannot block the export, then sort here.
+  for await (const item of notificationDocs(store, recipient, false)) {
     const { recipientKey: _drop, ...rest } = item.doc;
     notifications.push(notificationSchema.parse(rest));
   }
+  notifications.sort((a, b) => a.createdAt - b.createdAt || (a.id < b.id ? -1 : 1));
   const prefs = await store.get(PREFS, recipientKey(recipient));
   return { recipient, preferences: prefs ? preferencesSchema.parse(prefs) : null, notifications };
 }
@@ -66,11 +68,17 @@ export async function sweepBefore(store: Store, cutoff: number): Promise<number>
   if (!Number.isFinite(cutoff)) throw new RangeError("cutoff must be a finite number");
   const limit = 200;
   let removed = 0;
+  const gone = new Set<string>();
   for (;;) {
     // Oldest first. Each pass starts again at the front, so no cursor ever sits on a mixed-type field.
     const page = await store.query(NOTES, { orderBy: { field: "createdAt", direction: "asc" }, limit });
     const old = page.items.filter((i) => typeof i.doc.createdAt === "number" && i.doc.createdAt < cutoff);
-    for (const item of old) await store.delete(NOTES, item.id);
+    // A row we already deleted that comes back means deletes have no effect. Fail, do not loop.
+    if (old.some((i) => gone.has(i.id))) throw new Error("retention sweep did not finish: deletes had no effect");
+    for (const item of old) {
+      await store.delete(NOTES, item.id);
+      gone.add(item.id);
+    }
     removed += old.length;
     if (old.length > 0) continue;
     if (page.items.length < limit || page.items.some((i) => typeof i.doc.createdAt === "number")) return removed;
