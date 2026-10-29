@@ -34,6 +34,23 @@ export interface NotificationsState {
   markAllRead(): Promise<void>;
 }
 
+/** A row the list reads: the fields Inbox and the hook use. A wrong host or a proxy can send other rows, and those must not crash the tree. */
+function isNotification(n: unknown): n is Notification {
+  if (!n || typeof n !== "object") return false;
+  const r = n as Record<string, unknown>;
+  const ref = (v: unknown) => !!v && typeof v === "object" && typeof (v as { kind?: unknown }).kind === "string";
+  return (
+    typeof r.id === "string" &&
+    typeof r.type === "string" &&
+    typeof r.body === "string" &&
+    typeof r.createdAt === "number" &&
+    Number.isFinite(r.createdAt) &&
+    (r.readAt === null || typeof r.readAt === "number") &&
+    ref(r.actor) &&
+    ref(r.resource)
+  );
+}
+
 export function describeError(error: unknown, action = "Notifications could not be loaded. Try again."): string {
   if (error instanceof ApiError && (error.status === 401 || error.status === 403)) return "The token was not accepted.";
   if (error instanceof ApiError && error.status === 429) return "Too many requests. Wait a moment, then try again.";
@@ -112,7 +129,7 @@ export function useNotifications(options: NotifyUiOptions): NotificationsState {
       // A newer refresh started: its answer wins.
       if (!alive.current || ticket !== latest.current) return;
       // A wrong host or a proxy can answer 200 with another shape. That is a failure, not an empty inbox.
-      if (!Array.isArray(page?.items) || typeof count?.count !== "number") throw new ApiError(200, "bad_response");
+      if (!Array.isArray(page?.items) || !page.items.every(isNotification) || typeof count?.count !== "number") throw new ApiError(200, "bad_response");
       setItems(page.items);
       setUnread(count.count);
       setError(null);
@@ -128,6 +145,10 @@ export function useNotifications(options: NotifyUiOptions): NotificationsState {
     }
   }, [api, limit]);
 
+  // A mark call reads the latest refresh, so an answer under an old baseUrl never refills the list.
+  const refreshNow = useRef(refresh);
+  refreshNow.current = refresh;
+
   const mutate = useCallback(
     async (run: (client: Awaited<ReturnType<typeof api>>) => Promise<unknown>) => {
       setBusy(true);
@@ -135,7 +156,7 @@ export function useNotifications(options: NotifyUiOptions): NotificationsState {
       try {
         await run(await api());
         // Busy stays on until the list is fresh, so a second press cannot send a second call.
-        await refresh();
+        await refreshNow.current();
       } catch (e) {
         const noScope = e instanceof ApiError && e.status === 403;
         if (alive.current) setActionError(noScope ? "This token cannot make that change. It needs the notify:write scope." : describeError(e, "The change was not saved. Try again."));
@@ -143,7 +164,7 @@ export function useNotifications(options: NotifyUiOptions): NotificationsState {
         if (alive.current) setBusy(false);
       }
     },
-    [api, refresh],
+    [api],
   );
 
   const markRead = useCallback((id: string) => mutate((c) => c.markRead(id)), [mutate]);

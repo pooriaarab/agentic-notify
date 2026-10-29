@@ -152,3 +152,53 @@ test("bell: a failed mark call shows an alert, keeps the item unread, and can be
   await panel.getByRole("button", { name: "Dismiss" }).click();
   await expect(panel.getByRole("alert")).toHaveCount(0);
 });
+
+const list = /\/api\/v1\/notifications\?/;
+
+test("bell: a 200 with a row it cannot read is a load error, not a crash", async ({ page }) => {
+  await page.goto("/ui/");
+  await page.evaluate((t) => sessionStorage.setItem("notify-demo-token", t), ANA);
+  // A proxy or a wrong host answers with rows the inbox does not know.
+  await page.route(list, (route) => route.fulfill({ status: 200, contentType: "application/json", body: '{"items":[{}],"cursor":null}' }));
+  await page.reload();
+  // The count call is real, so the bell may also show unread items: the failure still shows.
+  const failed = page.getByRole("button", { name: /^Notifications, .*could not/ });
+  await expect(failed).toBeVisible();
+  await failed.click();
+  const panel = page.getByRole("dialog", { name: "Notifications" });
+  await expect(panel.getByRole("alert")).toContainText("could not be loaded");
+  await expect(panel.getByText("You are all caught up")).toHaveCount(0);
+});
+
+test("bell: a rate limit shows its message and pauses the polling", async ({ page }) => {
+  let hits = 0;
+  await page.goto("/ui/");
+  await page.evaluate((t) => sessionStorage.setItem("notify-demo-token", t), ANA);
+  await page.route(list, (route) => {
+    hits += 1;
+    return route.fulfill({ status: 429, contentType: "application/json", body: '{"error":"rate_limited"}' });
+  });
+  await page.reload();
+  await page.getByRole("button", { name: "Notifications, could not load" }).click();
+  const panel = page.getByRole("dialog", { name: "Notifications" });
+  await expect(panel.getByRole("alert")).toContainText("Too many requests");
+  // The poll (3 seconds in the demo) waits out the one-minute pause.
+  const seen = hits;
+  await page.waitForTimeout(4_000);
+  expect(hits).toBe(seen);
+});
+
+test("bell: a refused token stops the polling", async ({ page }) => {
+  let hits = 0;
+  await page.goto("/ui/");
+  await page.evaluate((t) => sessionStorage.setItem("notify-demo-token", t), ANA);
+  await page.route(list, (route) => {
+    hits += 1;
+    return route.fulfill({ status: 401, contentType: "application/json", body: '{"error":"unauthorized"}' });
+  });
+  await page.reload();
+  await expect(page.getByRole("button", { name: "Notifications, could not load" })).toBeVisible();
+  const seen = hits;
+  await page.waitForTimeout(4_000);
+  expect(hits).toBe(seen);
+});
