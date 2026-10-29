@@ -8,6 +8,14 @@ Minor. New subpath, no change to the SDK, CLI, MCP or HTTP shape.
 
 - `agentic-notify/account` exports `notifyAccount` with `exportAccount` and `eraseAccount`, so a host can export and erase a subject without reading the storage layout. The shape is provisional until `agentic-identity` ships the `AccountPackage` contract.
 
+## 0.4.3
+
+Patch. No change to the SDK, CLI, MCP or HTTP shape.
+
+- `agentic-notify-mcp mcp --help`, `-h`, `--version` and `-V` print the usage or the version and exit 0. Before, the bin read only its first argument, so the `mcp` word started the MCP server and it waited on stdin. The bin's own `--help` and `--version` already worked.
+- The bin reads `--help`, `-h`, `--version` and `-V` anywhere after an optional leading `mcp` word, and `-v` after `mcp`, as the package CLI does. When both help and version are given, help wins, as in the CLI.
+- End-to-end tests run these forms of the bin and assert exit 0 within a time limit.
+
 ## 0.4.2
 
 Patch. No change to the SDK, CLI, MCP or HTTP shape.
