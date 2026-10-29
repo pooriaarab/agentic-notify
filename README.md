@@ -5,7 +5,7 @@
 
 Notifications for humans and agents: in-app inbox, email and webhook delivery, with a CLI, API, MCP server and SDK.
 
-**Status: 0.5.0.** Breaking for Worker auth, see "Migrating from `NOTIFY_TOKENS`" below. Breaking for 0.1.0 code and databases, see the CHANGELOG upgrade steps. Works today: the notification model, preferences and mute, digest, a store port from agentic-identity with its memory and D1 adapters, signed webhook and email delivery through a dispatcher, an HTTP API in a Worker, an SDK, a CLI, MCP tools, per-recipient export and erase, a retention sweep, and a React bell and inbox (`agentic-notify/ui`). Not done: a real email provider adapter, webhook endpoint management, and a full-page inbox app.
+**Status: 0.6.0.** Breaking for Worker auth, see "Migrating from `NOTIFY_TOKENS`" below. Breaking for 0.1.0 code and databases, see the CHANGELOG upgrade steps. Works today: the notification model, preferences and mute, digest, a store port from agentic-identity with its memory and D1 adapters, signed webhook and email delivery through a dispatcher, an HTTP API in a Worker, an SDK, a CLI, MCP tools, per-recipient export and erase, a retention sweep, and a React bell and inbox (`agentic-notify/ui`). Not done: a real email provider adapter, webhook endpoint management, and a full-page inbox app.
 
 ## Live demo
 
@@ -152,6 +152,10 @@ import "agentic-notify/ui.css";
 - Install `agentic-design` in your app too, so your bundler can resolve `agentic-design/styles.css`. Use one copy of it.
 - Without React, `mount(element, options)` renders the bell into an element and returns `update` and `unmount`.
 - It uses `agd-` classes only. Keyboard: Enter opens, Escape closes and returns focus. It passes an axe WCAG 2.2 AA scan in light and dark, and it fits a 390px screen.
+
+## Account export and erase
+
+A host that runs account export and erase across many packages calls `notifyAccount` from `agentic-notify/account`. It has `exportAccount(subject, { notifier })` and `eraseAccount(subject, { notifier })`, so the host does not read the storage layout. The subject is an id and a kind. A person or a user token is a `human` recipient. Every agent kind is an `agent` recipient. The export has plain JSON in `notifications` and `preferences`. The erase removes both and returns counts. A repeat of the erase counts zero. Notifications that name the subject only as actor stay with their recipients. The shape is provisional: it is the `AccountPackage` contract that a later `agentic-identity` release adds to `agentic-identity/account`.
 
 ## Testing
 

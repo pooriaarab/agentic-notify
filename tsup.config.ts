@@ -10,6 +10,7 @@ export default defineConfig({
     worker: "src/worker.ts",
     sdk: "src/sdk.ts",
     testing: "src/testing.ts",
+    account: "src/account.ts",
     ui: "ui/embed.tsx",
   },
   external: ["react", "react-dom", "agentic-design"],
