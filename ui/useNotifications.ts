@@ -76,7 +76,19 @@ export function useNotifications(options: NotifyUiOptions): NotificationsState {
 
   // A slow network ends in an error after 10 seconds, and not in a list that loads forever.
   const timed: typeof fetch = useCallback((input, init) => (doFetch.current ?? fetch)(input, { ...init, signal: AbortSignal.timeout(10_000) }), []);
-  const api = useCallback(async () => createClient({ baseUrl, token: await getToken.current(), fetch: timed }), [baseUrl, timed]);
+  const api = useCallback(async () => {
+    // The wait for the token is under the same deadline as the calls.
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const limit = new Promise<never>((_, reject) => (timer = setTimeout(() => reject(new Error("token timeout")), 10_000)));
+    try {
+      const token = await Promise.race([Promise.resolve(getToken.current()), limit]);
+      // Signed out is a refused token, not a network failure.
+      if (!token) throw new ApiError(401, "unauthorized");
+      return createClient({ baseUrl, token, fetch: timed });
+    } finally {
+      clearTimeout(timer);
+    }
+  }, [baseUrl, timed]);
   const inFlight = useRef(false);
   // After a refused token the polling stops. A person's own action or `refresh()` starts it again.
   const refused = useRef(false);

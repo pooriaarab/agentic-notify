@@ -96,7 +96,7 @@ export function NotificationBell(options: NotifyUiOptions & { /** Which edge of 
         )}
       </span>
       <span className="agd-sr-only" role="status">
-        {loading ? "" : error ? `Notifications ${status}` : unread > 0 ? `${unread} unread notifications` : hadUnread.current ? "No unread notifications" : ""}
+        {loading || open ? "" : error ? `Notifications ${status}` : unread > 0 ? `${unread} unread notifications` : hadUnread.current ? "No unread notifications" : ""}
       </span>
       {open && (
         <div ref={panel} id={panelId} className="agd-notify__panel" data-align={options.align ?? "end"} style={{ "--agd-notify-top": `${top}px` } as CSSProperties} role="dialog" aria-labelledby={headingId} tabIndex={-1}>

@@ -122,3 +122,17 @@ test("bell: a refused token shows an alert, not an empty inbox", async ({ page }
   await expect(panel.getByRole("alert")).toContainText("The token was not accepted");
   await expect(panel.getByText("You are all caught up")).toHaveCount(0);
 });
+
+test("phone: the sign-in and send views fit 390px", async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 780 });
+  await page.goto("/ui/");
+  await page.evaluate(() => sessionStorage.clear());
+  await page.reload();
+  expect(await noOverflow(page)).toBe(true);
+  await audit(page, "05-sign-in-390");
+  await page.getByLabel("API token").fill(ANA);
+  await page.getByRole("button", { name: "Sign in" }).click();
+  await expect(page.getByRole("heading", { name: "Send a notification" })).toBeVisible();
+  expect(await noOverflow(page)).toBe(true);
+  await audit(page, "06-send-390");
+});

@@ -1,4 +1,4 @@
-import { useId } from "react";
+import { useEffect, useId, useState } from "react";
 import { BotIcon, Button, EmptyState } from "agentic-design/react";
 import type { Notification } from "../src/core/types.js";
 import type { NotificationsState } from "./useNotifications.js";
@@ -25,7 +25,7 @@ function safeHref(url: string | undefined): string | undefined {
   return protocol === "https:" || protocol === "http:" ? url : undefined;
 }
 
-function Item({ n, busy, onRead }: { n: Notification; busy: boolean; onRead(id: string): void }) {
+function Item({ n, busy, now, onRead }: { n: Notification; busy: boolean; now: number; onRead(id: string): void }) {
   const unread = n.readAt === null;
   const href = safeHref(n.resource.url);
   return (
@@ -47,7 +47,7 @@ function Item({ n, busy, onRead }: { n: Notification; busy: boolean; onRead(id: 
         <p className="agd-notify__meta">
           <span>{n.type}</span>
           <time dateTime={new Date(n.createdAt).toISOString()} title={new Date(n.createdAt).toLocaleString()}>
-            {ago(n.createdAt)}
+            {ago(n.createdAt, now)}
           </time>
         </p>
       </div>
@@ -70,6 +70,12 @@ function Item({ n, busy, onRead }: { n: Notification; busy: boolean; onRead(id: 
 /** The list, the header actions, and the empty and error states. The bell puts this in a popover. */
 export function Inbox({ state, headingId }: { state: NotificationsState; headingId?: string }) {
   const ownId = useId();
+  // The times move on while the popover stays open.
+  const [now, setNow] = useState(Date.now());
+  useEffect(() => {
+    const timer = setInterval(() => setNow(Date.now()), 30_000);
+    return () => clearInterval(timer);
+  }, []);
   headingId ??= ownId;
   const { items, unread, loading, error, actionError, busy, markRead, markAllRead } = state;
   return (
@@ -104,7 +110,7 @@ export function Inbox({ state, headingId }: { state: NotificationsState; heading
       ) : (
         <ul className="agd-notify__list" aria-labelledby={headingId}>
           {items.map((n) => (
-            <Item key={n.id} n={n} busy={busy} onRead={(id) => void markRead(id)} />
+            <Item key={n.id} n={n} busy={busy} now={now} onRead={(id) => void markRead(id)} />
           ))}
         </ul>
       )}

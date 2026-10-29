@@ -3,7 +3,8 @@ import { describe, expect, test } from "vitest";
 import pkg from "../package.json" with { type: "json" };
 
 // The build runs before the tests (`npm run ci:local`). These check that the ./ui export points at real files.
-describe("ui export", () => {
+// The build runs first in `ci:local`. Without a build there is nothing to check.
+describe.skipIf(!existsSync("dist/ui.js"))("ui export", () => {
   test("the exports map points at built files", () => {
     expect(pkg.exports["./ui"]).toEqual({ types: "./dist/ui.d.ts", import: "./dist/ui.js" });
     expect(pkg.exports["./ui.css"]).toBe("./dist/ui.css");

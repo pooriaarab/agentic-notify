@@ -1,5 +1,5 @@
 // Drives the demo page in a real browser against `wrangler dev`. Run `npm run test:ui`.
-import { mkdtempSync, writeFileSync } from "node:fs";
+import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { defineConfig } from "@playwright/test";
@@ -13,10 +13,11 @@ const CALLERS: SeedCaller[] = [
   { token: ANA, id: "ana", kind: "human", scopes: ["notify:read", "notify:write", "notify-send:write"] },
   { token: BOT, id: "build-bot", kind: "agent", scopes: ["notify-send:write"] },
 ];
-const PERSIST = mkdtempSync(join(tmpdir(), "notify-ui-d1-"));
+const PERSIST = NODE_OK ? mkdtempSync(join(tmpdir(), "notify-ui-d1-")) : "";
+if (NODE_OK) process.on("exit", () => rmSync(PERSIST, { recursive: true, force: true }));
 // The keys are credentials kept in the store: write them first, then start the Worker on the same data.
 const SEED_FILE = join(PERSIST, "seed.sql");
-writeFileSync(SEED_FILE, seedSql(CALLERS).join(";\n") + ";\n");
+if (NODE_OK) writeFileSync(SEED_FILE, seedSql(CALLERS).join(";\n") + ";\n");
 const SEED = `node_modules/.bin/wrangler d1 execute DB --local -c wrangler.demo.jsonc --persist-to ${PERSIST} --file ${SEED_FILE}`;
 
 export default defineConfig({
