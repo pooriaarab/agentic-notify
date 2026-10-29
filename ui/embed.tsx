@@ -23,14 +23,16 @@ export function mount(element: HTMLElement, options: NotifyUiOptions): MountedBe
   if (!(element instanceof HTMLElement)) throw new TypeError("mount needs an element to render into");
   checkOptions(options);
   const root = createRoot(element);
+  // A new key on each update remounts the bell, so one caller's list never shows under another's token.
+  let generation = 0;
   const render = (next: NotifyUiOptions) =>
     root.render(
       <StrictMode>
         <TooltipProvider>
-          <NotificationBell key={next.baseUrl} {...next} />
+          <NotificationBell key={generation} {...next} />
         </TooltipProvider>
       </StrictMode>,
     );
   render(options);
-  return { update: (next) => (checkOptions(next), render(next)), unmount: () => root.unmount() };
+  return { update: (next) => (checkOptions(next), generation++, render(next)), unmount: () => root.unmount() };
 }

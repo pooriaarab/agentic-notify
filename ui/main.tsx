@@ -38,6 +38,7 @@ function Send({ token }: { token: string }) {
   const [result, setResult] = useState<{ ok: boolean; text: string }>();
   const submit = async (e: FormEvent) => {
     e.preventDefault();
+    setResult(undefined);
     try {
       await createClient({ baseUrl, token }).send({ recipient: { kind, id: id.trim() }, type: "demo.message", resource: { kind: "demo", id: "1" }, body });
       setResult({ ok: true, text: "Sent." });
@@ -57,8 +58,11 @@ function Send({ token }: { token: string }) {
       <Input label="Recipient id" value={id} onChange={(e) => setId(e.target.value)} required />
       <Input label="Message" value={body} maxLength={2000} onChange={(e) => setBody(e.target.value)} required />
       <Button type="submit">Send</Button>
-      {result && (
-        <p role={result.ok ? "status" : "alert"} className={result.ok ? "demo-muted" : "demo-error"}>
+      <p role="status" className="demo-muted">
+        {result?.ok ? result.text : ""}
+      </p>
+      {result && !result.ok && (
+        <p role="alert" className="demo-error">
           {result.text}
         </p>
       )}

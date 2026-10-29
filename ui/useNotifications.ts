@@ -74,10 +74,17 @@ export function useNotifications(options: NotifyUiOptions): NotificationsState {
   const latest = useRef(0);
   const alive = useRef(true);
 
-  const api = useCallback(async () => createClient({ baseUrl, token: await getToken.current(), fetch: doFetch.current }), [baseUrl]);
+  // A slow network ends in an error after 10 seconds, and not in a list that loads forever.
+  const timed: typeof fetch = useCallback((input, init) => (doFetch.current ?? fetch)(input, { ...init, signal: AbortSignal.timeout(10_000) }), []);
+  const api = useCallback(async () => createClient({ baseUrl, token: await getToken.current(), fetch: timed }), [baseUrl, timed]);
+  const inFlight = useRef(false);
+  // After a refused token the polling stops. A person's own action or `refresh()` starts it again.
+  const refused = useRef(false);
 
   const refresh = useCallback(async () => {
     const ticket = ++latest.current;
+    inFlight.current = true;
+    refused.current = false;
     try {
       const client = await api();
       const [page, count] = await Promise.all([client.list({ limit }), client.unreadCount()]);
@@ -88,8 +95,10 @@ export function useNotifications(options: NotifyUiOptions): NotificationsState {
       setError(null);
     } catch (e) {
       if (!alive.current || ticket !== latest.current) return;
+      refused.current = e instanceof ApiError && (e.status === 401 || e.status === 403);
       setError(describeError(e));
     } finally {
+      if (ticket === latest.current) inFlight.current = false;
       if (alive.current && ticket === latest.current) setLoading(false);
     }
   }, [api, limit]);
@@ -118,7 +127,8 @@ export function useNotifications(options: NotifyUiOptions): NotificationsState {
     alive.current = true;
     void refresh();
     const visible = () => document.visibilityState === "visible";
-    const tick = () => visible() && void refresh();
+    // A poll does not start while an earlier call runs or after a refused token.
+    const tick = () => visible() && !inFlight.current && !refused.current && void refresh();
     const timer = pollMs > 0 ? setInterval(tick, pollMs) : undefined;
     document.addEventListener("visibilitychange", tick);
     return () => {
