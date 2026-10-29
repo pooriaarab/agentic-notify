@@ -1,0 +1,12 @@
+# agentic-notify
+
+Notifications for humans and agents: in-app inbox, email and webhook delivery.
+
+- SDK: import { VERSION } from "agentic-notify".
+- CLI: npx agentic-notify --help.
+- MCP: npx agentic-notify mcp, then call ping.
+
+## Docs
+
+- README: https://github.com/pooriaarab/agentic-notify
+- License: MIT
