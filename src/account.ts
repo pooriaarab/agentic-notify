@@ -1,7 +1,7 @@
 // The package's side of the account contract: a host calls `exportAccount` and `eraseAccount`
-// and never reads the storage layout. The shape is provisional: it is the contract that a later
-// `agentic-identity` release adds to `agentic-identity/account` as `AccountPackage`. The `AccountApp`
-// of earlier releases is a different contract, and this does not fit it.
+// and never reads the storage layout. The shape is provisional. `agentic-identity` 0.10.0 ships
+// `AccountPackage` in `agentic-identity/account`, and this shape is not yet checked against it.
+// The `AccountApp` of earlier releases is a different contract, and this does not fit it.
 import type { PrincipalKind } from "agentic-identity";
 import type { Notifier } from "./core/service.js";
 import { recipientSchema, type Recipient } from "./core/types.js";
