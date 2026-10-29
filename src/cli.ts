@@ -41,7 +41,7 @@ function helpText(): string {
     "  mcp                                            Start the MCP server on stdio.",
     "",
     "Environment: NOTIFY_URL (server base url), NOTIFY_TOKEN (bearer token).",
-    "Flags: --help, -h; --version, -V.",
+    "Flags: --help, -h; --version, -V. mcp also takes -v for --version.",
   ].join("\n");
 }
 

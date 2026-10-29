@@ -38,7 +38,7 @@ test.each(["--help", "-h"])("%s prints usage to stdout and exits 0 within 5 s", 
   const result = await run([flag]);
   expect(result.timedOut).toBe(false);
   expect(result.code).toBe(0);
-  expect(result.stdout).toContain("Usage: agentic-notify-mcp [--help | --version]");
+  expect(result.stdout).toContain("Usage: agentic-notify-mcp [--help | -h | --version | -V]");
   expect(result.stderr).toBe("");
   expect(Date.now() - started).toBeLessThan(5000);
 }, 10_000);
