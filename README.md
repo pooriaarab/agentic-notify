@@ -9,12 +9,11 @@ Notifications for humans and agents: in-app inbox, email and webhook delivery, w
 
 ## Live demo
 
-A demo Worker runs at https://agentic-notify-demo.hello-fd1.workers.dev. `GET /health` answers 200. The `/api/v1` routes need a bearer token, so without one they answer 401. The demo keeps its data in the EU and sweeps notifications after 7 days.
+A demo Worker runs at https://agentic-notify-demo.hello-fd1.workers.dev. `GET /health` answers 200. The `/api/v1` routes need a key, so without one they answer 401. The demo keeps its data in the EU and sweeps notifications after 7 days.
 
-Redeploy your own copy with `wrangler.demo.jsonc` (create the D1 database with `--location weur`, put its id in the file, set the `NOTIFY_TOKENS` secret):
+Redeploy your own copy with `wrangler.demo.jsonc` (create the D1 database with `--location weur`, put its id in the file, then add principals and keys, see Identity):
 
 ```sh
-npx wrangler secret put NOTIFY_TOKENS --config wrangler.demo.jsonc
 WRANGLER_SEND_METRICS=false npm run deploy:demo
 ```
 
@@ -42,16 +41,16 @@ await notifier.send({
 const { items } = await notifier.list({ kind: "agent", id: "helper" });
 ```
 
-Worker (D1 binding `DB`, secret `NOTIFY_TOKENS`):
+Worker (D1 binding `DB`):
 
 ```sh
 # Create the database first: npx wrangler d1 create agentic-notify --location weur
-# NOTIFY_TOKENS is JSON: { "<token of 32+ bytes>": { "kind": "human", "id": "ana", "canSend": true } }
-npx wrangler secret put NOTIFY_TOKENS
 npx wrangler deploy
 ```
 
-Without a D1 binding or `NOTIFY_TOKENS`, every `/api/v1` call answers 503. Nobody gets in by default.
+The Worker reads keys and principals from the same D1 database, with `agentic-identity`. Issue a key for each caller with `agentic-identity` (for example `issueCredential`, or its Worker), into this database. See Identity below.
+
+Without a D1 binding, every `/api/v1` call answers 503. A request without a valid key answers 401, on unknown paths too. Nobody gets in by default.
 
 CLI, SDK and MCP talk to that Worker:
 
@@ -64,7 +63,7 @@ npx agentic-notify mcp      # tools: ping, list_notifications, read_notification
                             # export_data, erase_data, send_notification
 ```
 
-The MCP server needs `NOTIFY_URL` and `NOTIFY_TOKEN`. Without them only `ping` works. `erase_data` needs `confirm: true`.
+The MCP server needs `NOTIFY_URL` and `NOTIFY_TOKEN`. Without them only `ping` works. `erase_data` needs `confirm: true` and a key with `notify:admin`. `send_notification` needs `notify-send:write`. A tool that lacks its scope reports 403.
 
 ```ts
 import { createClient } from "agentic-notify/sdk";
@@ -74,7 +73,16 @@ console.log(await client.unreadCount());
 
 ## HTTP API
 
-All routes sit under `/api/v1` and need `Authorization: Bearer <token>`. `GET /health` is open.
+All routes sit under `/api/v1` and need `Authorization: Bearer <key>`. `GET /health` is open. A missing or bad key answers 401. A good key without the scope of the route answers 403. Each route needs one scope:
+
+| Scope | Routes |
+| --- | --- |
+| `notify:read` | `GET /notifications`, `GET /notifications/:id`, `GET /unread-count`, `GET /digest`, `GET /preferences`, `GET /me/export` |
+| `notify:write` | `POST /notifications/:id/read`, `POST /notifications/read-all`, `PUT /preferences` |
+| `notify-send:write` | `POST /notifications` |
+| `notify:admin` | `DELETE /me` |
+
+A scope with a higher action covers the lower ones, so `notify:admin` covers `notify:write` and `notify:read`. `*:admin` covers all. `notify-send` is a separate resource, so a key that can only send cannot read.
 
 | Route | Use |
 | --- | --- |
@@ -87,7 +95,22 @@ All routes sit under `/api/v1` and need `Authorization: Bearer <token>`. `GET /h
 
 ## Identity
 
-Auth is a port: `PrincipalResolver` turns a request into `{ kind: "human" | "agent", id }` or null. `createStaticTokenResolver` is a small example. To use another identity system, call `createWorker({ resolver })` with your own resolver. Import `createWorker` from `agentic-notify/worker`. A caller reads and changes only its own notifications.
+The Worker authenticates with `agentic-identity`. `requirePrincipal` from `agentic-identity/http` reads the credential, and the `Auth` port checks that it is not expired or revoked. The default `Auth` takes a bearer key, and also a `session` cookie that `agentic-identity` sets. A write with a cookie is refused, because no origin is allowed here. Pass your own `Auth` to accept bearer keys only. The default `Auth` is `createStoreAuth` over the same D1 store. Each route checks one scope (see HTTP API). A delegated agent holds only the scopes that its person also holds.
+
+A person, and a `user_token` of that person, use the inbox of the person. An agent (`agent`, `agent_of_human` or `agent_of_agent`) uses the inbox of its own id. A caller reads and changes only its own notifications.
+
+To use another identity system, call `createWorker({ auth })` with your own `Auth`. Import `createWorker` from `agentic-notify/worker`. `createApp({ notifier, auth })` takes the same port.
+
+### Migrating from `NOTIFY_TOKENS`
+
+Before this change, the Worker read a static `NOTIFY_TOKENS` secret: a map of token to `{ kind, id, canSend }`. The tokens had no scopes. The Worker no longer reads it. Steps:
+
+1. Delete the `NOTIFY_TOKENS` secret (`npx wrangler secret delete NOTIFY_TOKENS`).
+2. Make each caller a principal in the D1 database, and issue it a key with `agentic-identity`. The old `{ "kind": "human" }` becomes kind `human`, and `{ "kind": "agent" }` becomes kind `agent`.
+3. Give each principal scopes. An old token could read, change and erase its own inbox. To keep that, use `notify:admin`. For less, use `notify:write` (it covers `notify:read`) or `notify:read`. For the old `canSend: true`, add `notify-send:write`. It is a separate resource, so it does not cover `notify:read`: a caller that sends and reads needs both.
+4. Give the new key to the CLI, SDK and MCP server as `NOTIFY_TOKEN`.
+
+Library users: `createApp` takes `auth` in place of `resolvePrincipal`. `createWorker` takes `auth` in place of `resolver`. `createStaticTokenResolver` and `PrincipalResolver` are gone. `authorizeSend` still works as an extra check after the scope, and the default now allows (the scope decides).
 
 ## Privacy
 

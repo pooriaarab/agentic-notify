@@ -1,8 +1,9 @@
 import { spawn, type ChildProcess } from "node:child_process";
-import { mkdtempSync, rmSync } from "node:fs";
+import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { createServer } from "node:net";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { seedSql, type SeedCaller } from "./test-seed.js";
 import { afterAll, beforeAll, describe, expect, test } from "vitest";
 
 // Real processes: `wrangler dev` serves the Worker over a local D1 database, and the built CLI
@@ -13,10 +14,10 @@ const CLI = join(ROOT, "dist", "cli.js");
 const WRANGLER = join(ROOT, "node_modules", ".bin", "wrangler");
 const ANA = "a".repeat(40);
 const BOT = "b".repeat(40);
-const TOKENS = JSON.stringify({
-  [ANA]: { kind: "human", id: "ana" },
-  [BOT]: { kind: "agent", id: "helper", canSend: true },
-});
+const CALLERS: SeedCaller[] = [
+  { token: ANA, id: "ana", kind: "human", scopes: ["notify:admin"] },
+  { token: BOT, id: "helper", kind: "agent", scopes: ["notify-send:write"] },
+];
 
 let dev: ChildProcess;
 let state: string;
@@ -58,7 +59,7 @@ async function startDev(): Promise<string | null> {
     WRANGLER,
     [
       "dev", "--local", "--ip", "127.0.0.1", "--port", String(port), "--persist-to", state,
-      "--var", `NOTIFY_TOKENS:${TOKENS}`, "--var", "NOTIFY_REGION:unknown",
+      "--var", "NOTIFY_REGION:unknown",
     ],
     { cwd: ROOT, env: { ...process.env, WRANGLER_SEND_METRICS: "false", CI: "1" }, stdio: ["ignore", "pipe", "pipe"], detached: true },
   );
@@ -98,6 +99,11 @@ describe.skipIf(NODE_MAJOR < 22)("real processes", () => {
     const built = await run("npx", ["tsup"]);
     if (built.code !== 0) throw new Error(`build failed: ${built.err}`);
     state = mkdtempSync(join(tmpdir(), "notify-e2e-"));
+    // Put the identity rows in the local D1 database before the Worker starts.
+    const sqlFile = join(state, "seed.sql");
+    writeFileSync(sqlFile, seedSql(CALLERS).join(";\n") + ";\n");
+    const seeded = await run(WRANGLER, ["d1", "execute", "DB", "--local", "--persist-to", state, "--file", sqlFile], { WRANGLER_SEND_METRICS: "false", CI: "1" });
+    if (seeded.code !== 0) throw new Error(`seed failed: ${seeded.err}`);
     let failed = await startDev();
     // The port can be taken between the probe and the bind. Try once more on a new port.
     if (failed !== null && /address already in use|EADDRINUSE/i.test(failed)) failed = await startDev();

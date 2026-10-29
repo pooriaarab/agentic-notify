@@ -7,17 +7,35 @@ import { StdioClientTransport } from "@modelcontextprotocol/sdk/client/stdio.js"
 import { join } from "node:path";
 import { InMemoryTransport } from "@modelcontextprotocol/sdk/inMemory.js";
 import { runCli } from "./cli.js";
+import { seedSql, type SeedCaller } from "./test-seed.js";
 import { createMcpServer } from "./mcp.js";
 import { ApiError, createClient } from "./sdk.js";
 
 const ANA = "a".repeat(40);
 const BOT = "b".repeat(40);
 const EVE = "e".repeat(40);
-const TOKENS = {
-  [ANA]: { kind: "human", id: "ana", canSend: true },
-  [BOT]: { kind: "agent", id: "helper", canSend: true },
-  [EVE]: { kind: "human", id: "eve" },
-};
+const READER = "r".repeat(40);
+const SENDER = "s".repeat(40);
+const NARROW = "n".repeat(40);
+const DELEGATE = "d".repeat(40);
+const ALL = ["notify:admin", "notify-send:write"];
+const CALLERS: SeedCaller[] = [
+  { token: ANA, id: "ana", kind: "human", scopes: ALL },
+  { token: BOT, id: "helper", kind: "agent", scopes: ALL },
+  // Eve may read and change her own inbox. She may not send and not erase.
+  { token: EVE, id: "eve", kind: "human", scopes: ["notify:write"] },
+  // Reader may only read. Sender may only send.
+  { token: READER, id: "reader", kind: "human", scopes: ["notify:read"] },
+  { token: SENDER, id: "sender", kind: "agent", scopes: ["notify-send:write"] },
+  // A delegated agent never exceeds what its person grants: the person here grants read only.
+  { token: NARROW, id: "narrow-person", kind: "human", scopes: ["notify:read"] },
+  { token: DELEGATE, id: "delegate", kind: "agent_of_human", parentId: "narrow-person", scopes: ["notify:admin"] },
+];
+
+async function seed(m: Miniflare): Promise<void> {
+  const db = await m.getD1Database("DB");
+  for (const sql of seedSql(CALLERS)) await db.exec(sql);
+}
 
 let mf: Miniflare;
 let url: string;
@@ -38,9 +56,10 @@ beforeAll(async () => {
     script: bundle.outputFiles[0]!.text,
     compatibilityDate: "2026-01-01",
     d1Databases: { DB: "notify-e2e" },
-    bindings: { NOTIFY_TOKENS: JSON.stringify(TOKENS), NOTIFY_REGION: "unknown" },
+    bindings: { NOTIFY_REGION: "unknown" },
   });
   url = (await mf.ready).toString();
+  await seed(mf);
 }, 60_000);
 
 afterAll(async () => {
@@ -61,6 +80,50 @@ describe("worker http api", () => {
     for (const headers of [{} as Record<string, string>, { authorization: "Bearer nope" }, { authorization: `Basic ${ANA}` }]) {
       expect((await fetch(`${url}api/v1/notifications`, { headers })).status).toBe(401);
     }
+  });
+
+  test("401: no token, a bad token, a wrong scheme and an unknown key all say unauthorized", async () => {
+    for (const headers of [{} as Record<string, string>, { authorization: `Bearer ${"z".repeat(40)}` }, { authorization: `Basic ${ANA}` }, { authorization: `bearer ${ANA}` }]) {
+      for (const [method, path] of [["GET", "notifications"], ["POST", "notifications"], ["PUT", "preferences"], ["DELETE", "me"]] as const) {
+        const res = await fetch(`${url}api/v1/${path}`, { method, headers, body: method === "GET" ? undefined : "{}" });
+        expect(res.status).toBe(401);
+        expect(res.headers.get("www-authenticate")).toContain("Bearer");
+        expect(await res.text()).not.toContain(ANA);
+      }
+    }
+  });
+
+  test("an unknown path is 401 without a key and 404 with one", async () => {
+    expect((await fetch(`${url}api/v1/nope`)).status).toBe(401);
+    expect((await fetch(`${url}api/v1/notifications`, { method: "PATCH" })).status).toBe(401);
+    expect((await fetch(`${url}api/v1/nope`, { headers: { authorization: `Bearer ${READER}` } })).status).toBe(404);
+  });
+
+  test("403: a good key without the scope for the route is refused", async () => {
+    const raw = (token: string, method: string, path: string, body?: unknown) =>
+      fetch(`${url}api/v1/${path}`, { method, headers: { authorization: `Bearer ${token}`, "content-type": "application/json" }, body: body === undefined ? undefined : JSON.stringify(body) });
+    // read-only: reads pass, every write and send and erase is refused
+    expect((await raw(READER, "GET", "notifications")).status).toBe(200);
+    expect((await raw(READER, "GET", "preferences")).status).toBe(200);
+    expect((await raw(READER, "POST", "notifications/read-all")).status).toBe(403);
+    expect((await raw(READER, "PUT", "preferences", { channels: {}, muted: true, mutedTypes: [] })).status).toBe(403);
+    expect((await raw(READER, "POST", "notifications", note("ana"))).status).toBe(403);
+    expect((await raw(READER, "DELETE", "me")).status).toBe(403);
+    // send-only: can send, cannot read
+    expect((await raw(SENDER, "POST", "notifications", note("nobody"))).status).toBe(201);
+    expect((await raw(SENDER, "GET", "notifications")).status).toBe(403);
+    expect((await raw(SENDER, "GET", "me/export")).status).toBe(403);
+    // write without admin cannot erase
+    expect((await raw(EVE, "DELETE", "me")).status).toBe(403);
+    expect((await raw(EVE, "POST", "notifications/read-all")).status).toBe(200);
+    // the preference write of the reader did not land
+    expect((await as(READER).getPreferences()).muted).toBe(false);
+    // a delegated agent holds only what its person holds
+    expect((await raw(DELEGATE, "GET", "notifications")).status).toBe(200);
+    expect((await raw(DELEGATE, "POST", "notifications/read-all")).status).toBe(403);
+    expect((await raw(DELEGATE, "POST", "notifications", note("ana"))).status).toBe(403);
+    const refused = await raw(READER, "DELETE", "me");
+    expect(await refused.text()).not.toContain(READER);
   });
 
   test("an agent sends, the person reads and marks it, and the actor is the caller", async () => {
@@ -160,7 +223,7 @@ describe("worker region", () => {
       conditions: ["worker", "browser"],
       logLevel: "error",
     });
-    const bindings: Record<string, string> = { NOTIFY_TOKENS: JSON.stringify(TOKENS) };
+    const bindings: Record<string, string> = {};
     if (region !== undefined) bindings.NOTIFY_REGION = region;
     const m = new Miniflare({
       modules: true,
@@ -169,7 +232,9 @@ describe("worker region", () => {
       d1Databases: { DB: "notify-region" + Math.random().toString(36).slice(2) },
       bindings,
     });
-    return { mf: m, url: (await m.ready).toString() };
+    const ready = (await m.ready).toString();
+    await seed(m);
+    return { mf: m, url: ready };
   }
 
   test("a 0.1.0 table that still holds rows refuses every call until the rows are copied", async () => {

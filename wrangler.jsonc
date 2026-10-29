@@ -1,7 +1,7 @@
 {
   // Sample worker config. Create the database in the EU first:
   //   wrangler d1 create agentic-notify --location weur
-  // Put its id below, then set the secret NOTIFY_TOKENS and run wrangler deploy.
+  // Put its id below, then run wrangler deploy. Add principals and keys with agentic-identity.
   "name": "agentic-notify",
   "main": "src/worker.ts",
   "compatibility_date": "2026-01-01",
