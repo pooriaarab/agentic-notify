@@ -9,7 +9,7 @@ Patch. No change to the SDK, CLI, MCP or HTTP shape.
 - The zod dependency is `^4.6.7` (#46). Earlier versions can use a lot of memory on oversized constrained collections (GHSA-mrhx-c7xc-m3w5).
 - Bad cursor and bad request body errors answer 400 under zod 4 (#46).
 - `agentic-identity` is `^0.7.0` (#42). The lockfile follows. The `Store` and related types that this package re-exports come from 0.7.
-- `agentic-notify mcp --help` and `-h` print the usage (#40). `agentic-notify mcp --version`, `-V` and `-v` print the version. The `agentic-notify-mcp` bin answers `--help`, `-h`, `--version` and `-V`. Each exits 0 and does not start the server. Before, `mcp --help` started the MCP server and waited on stdin.
+- `agentic-notify mcp --help` and `-h` print the usage (#40). `agentic-notify mcp --version`, `-V` and `-v` print the version. Each exits 0 and does not start the server. Before, `mcp --help` started the MCP server and waited on stdin. The `agentic-notify-mcp` bin's usage line now lists `-h` and `-V`.
 - The publish workflow runs one publish at a time per ref (#44). A second run waits for the first. A running publish finishes.
 
 ## 0.4.0
