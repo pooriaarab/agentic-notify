@@ -14,7 +14,7 @@ function json(value: unknown, status = 200): Response {
 export default {
   async fetch(request: Request, env: WorkerEnv): Promise<Response> {
     const url = new URL(request.url);
-    if (request.method === "GET" && url.pathname === "/health") {
+    if ((request.method === "GET" || request.method === "HEAD") && url.pathname === "/health") {
       return json({ ok: true, name: env.NOTIFY_NAME ?? "agentic-notify", version: VERSION });
     }
     return json({ error: "not found" }, 404);

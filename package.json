@@ -21,7 +21,7 @@
   "type": "module",
   "private": false,
   "engines": {
-    "node": ">=18"
+    "node": ">=20"
   },
   "files": [
     "dist"
@@ -47,7 +47,8 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "clean": "rm -rf dist",
-    "ci:local": "npm run build && npm run typecheck && npm test"
+    "ci:local": "npm run build && npm run typecheck && npm run check:worker && npm test",
+    "check:worker": "esbuild src/worker.ts --bundle --platform=neutral --format=esm --log-level=warning --outfile=node_modules/.cache/worker-check.js"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.12.0",
