@@ -86,6 +86,15 @@ export async function runCli(argv: string[], io: CliIo = defaultIo()): Promise<n
     io.out(VERSION);
     return 0;
   }
+  // `mcp --help` and `mcp --version` answer and exit. They never start the server.
+  if (cmd === "mcp" && args.some((a) => a === "--help" || a === "-h")) {
+    io.out(helpText());
+    return 0;
+  }
+  if (cmd === "mcp" && args.some((a) => a === "--version" || a === "-V" || a === "-v")) {
+    io.out(VERSION);
+    return 0;
+  }
   try {
     if (cmd === "mcp") {
       const { startMcp } = await import("./mcp.js");
