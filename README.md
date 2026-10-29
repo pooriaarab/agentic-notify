@@ -60,7 +60,8 @@ export NOTIFY_URL=https://notify.example.org NOTIFY_TOKEN=...
 npx agentic-notify send --to human:ana --type mention --resource doc:d1 --body "Look at this"
 npx agentic-notify list --unread
 npx agentic-notify mcp      # tools: list_notifications, read_notification, mark_read,
-                            # mark_all_read, get_preferences, set_preferences, send_notification
+                            # mark_all_read, get_preferences, set_preferences, unread_count, digest,
+                            # export_data, erase_data, send_notification
 ```
 
 ```ts

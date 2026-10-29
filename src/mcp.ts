@@ -50,6 +50,20 @@ export function createMcpServer(client?: Client): McpServer {
     inputSchema: preferencesSchema.shape,
     annotations: write,
   }, (a) => need((c) => c.setPreferences(a))());
+  server.registerTool("unread_count", { description: "Count your unread notifications.", inputSchema: {}, annotations: read },
+    need((c) => c.unreadCount()));
+  server.registerTool("digest", {
+    description: "Group your unread notifications by type. Optional since: epoch milliseconds.",
+    inputSchema: { since: z.number().int().min(0).optional() },
+    annotations: read,
+  }, ({ since }) => need((c) => c.digest(since))());
+  server.registerTool("export_data", { description: "Export all data held about you.", inputSchema: {}, annotations: read },
+    need((c) => c.exportData()));
+  server.registerTool("erase_data", {
+    description: "Permanently delete all data held about you. Pass confirm: true. This cannot be undone.",
+    inputSchema: { confirm: z.literal(true) },
+    annotations: { readOnlyHint: false, destructiveHint: true, idempotentHint: true, openWorldHint: false },
+  }, () => need((c) => c.erase())());
   server.registerTool("send_notification", {
     description: "Send a notification. You must hold the send right. You are the actor.",
     inputSchema: { recipient: recipientSchema, type: typeNameSchema, resource: resourceRefSchema, body: z.string().max(2000) },

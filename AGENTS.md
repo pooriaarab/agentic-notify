@@ -24,6 +24,8 @@ Set NOTIFY_URL and NOTIFY_TOKEN. Without them only `ping` works.
 | list_notifications | List yours, newest first. |
 | read_notification | Get one by id. |
 | mark_read / mark_all_read | Clear unread state. |
+| unread_count / digest | Count unread, or group unread by type. |
+| export_data / erase_data | Export or delete all data held about you. Erase needs `confirm: true`. |
 | get_preferences / set_preferences | Channels per type, mute. |
 | send_notification | Notify someone. Needs the send right. |
 
