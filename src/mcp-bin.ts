@@ -2,7 +2,7 @@
 import { VERSION } from "./version.js";
 
 const HELP = `agentic-notify-mcp ${VERSION}
-Usage: agentic-notify-mcp [--help | --version]
+Usage: agentic-notify-mcp [--help | -h | --version | -V]
 
 Runs the MCP server on stdio. An MCP client starts it.
 `;
