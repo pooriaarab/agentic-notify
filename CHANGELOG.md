@@ -2,7 +2,7 @@
 
 All notable changes to this package are listed here.
 
-## Unreleased
+## 0.2.0
 
 Breaking. The package now uses the `Store` port from `agentic-identity` (`^0.4.0`) and drops its own copy.
 
