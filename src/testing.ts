@@ -69,6 +69,25 @@ export function storeContract(name: string, make: () => Promise<Store>, makePeer
       expect(await s.get("c", "a")).toBeNull();
     });
 
+    test("deleteMany removes the listed docs, ignores missing ids, and keeps the rest", async () => {
+      const s = await make();
+      await s.deleteMany("c", []);
+      for (const id of ["a", "b", "c", "d"]) await s.put("c", id, { v: 1 });
+      await s.put("other", "a", { v: 1 });
+      await s.deleteMany("c", ["a", "b", "missing", "a"]);
+      expect((await s.query("c")).items.map((i) => i.id)).toEqual(["c", "d"]);
+      expect(await s.get("other", "a")).toEqual({ v: 1 });
+    });
+
+    test("deleteMany handles more ids than one batch", async () => {
+      const s = await make();
+      const ids = Array.from({ length: 250 }, (_, i) => `id${i}`);
+      await Promise.all(ids.map((id) => s.put("c", id, { v: 1 })));
+      await s.put("c", "keep", { v: 1 });
+      await s.deleteMany("c", ids);
+      expect((await s.query("c")).items.map((i) => i.id)).toEqual(["keep"]);
+    }, 30_000);
+
     test("query filters on equality, including null", async () => {
       const s = await make();
       await s.put("c", "a", { k: "x", r: null });

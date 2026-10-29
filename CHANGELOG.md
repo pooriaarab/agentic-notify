@@ -2,6 +2,12 @@
 
 All notable changes to this package are listed here.
 
+## Unreleased
+
+- `Store` has a new required method, `deleteMany(collection, ids)`. Custom adapters must add it.
+- `D1Like` has a new required method, `batch(statements)`. The D1 adapter uses it to delete in batches of 100.
+- Erase and the retention sweep delete in bulk.
+
 ## 0.1.0
 
 First release.

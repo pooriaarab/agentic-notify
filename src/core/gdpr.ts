@@ -52,7 +52,7 @@ export async function eraseRecipient(store: Store, recipient: Recipient): Promis
     const ids: string[] = [];
     for await (const item of notificationDocs(store, recipient, false)) ids.push(item.id);
     if (ids.length === 0) break;
-    for (const id of ids) await store.delete(NOTES, id);
+    await store.deleteMany(NOTES, ids);
     removed += ids.length;
   }
   await store.delete(PREFS, recipientKey(recipient));
@@ -75,10 +75,8 @@ export async function sweepBefore(store: Store, cutoff: number): Promise<number>
     const old = page.items.filter((i) => typeof i.doc.createdAt === "number" && i.doc.createdAt < cutoff);
     // A row we already deleted that comes back means deletes have no effect. Fail, do not loop.
     if (old.some((i) => gone.has(i.id))) throw new Error("retention sweep did not finish: deletes had no effect");
-    for (const item of old) {
-      await store.delete(NOTES, item.id);
-      gone.add(item.id);
-    }
+    await store.deleteMany(NOTES, old.map((i) => i.id));
+    for (const item of old) gone.add(item.id);
     removed += old.length;
     if (old.length > 0) continue;
     if (page.items.length < limit || page.items.some((i) => typeof i.doc.createdAt === "number")) return removed;

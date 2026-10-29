@@ -78,6 +78,7 @@ Auth is a port: `PrincipalResolver` turns a request into `{ kind: "human" | "age
 ## Privacy
 
 - Export and erase work per recipient. `retentionMs` plus `sweep()` (or a cron trigger on the Worker, with `NOTIFY_RETENTION_DAYS`) deletes old notifications.
+- Erase and sweep delete in bulk with `Store.deleteMany`. The D1 adapter sends it as `db.batch` calls of up to 100 rows, so a large erase does not cost one query per row.
 - Logs hold ids, channel names and error names only. They never hold bodies or addresses.
 - Erase removes a recipient's own notifications and preferences. Notifications that name the person only as actor stay with their recipients.
 
