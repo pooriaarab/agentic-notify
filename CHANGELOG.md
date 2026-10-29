@@ -2,6 +2,16 @@
 
 All notable changes to this package are listed here.
 
+## 0.3.0
+
+Minor. Additive. No change to the SDK, the HTTP API, the CLI or the Worker.
+
+- The MCP server has four more tools: `unread_count`, `digest`, `export_data` and `erase_data`. The HTTP API, the SDK and the CLI already had them, so the MCP server now matches the CLI.
+- `erase_data` needs `confirm: true`. It permanently deletes all data held about the caller, so the tool is marked destructive. The CLI needs `erase --yes` for the same step.
+- Each MCP tool acts only for the caller. The token sets the caller.
+- The stdio test drives the built MCP bin against the Worker.
+- The README and SKILL.md list the `ping` tool. The README says that only `ping` works without `NOTIFY_URL` and `NOTIFY_TOKEN`.
+
 ## 0.2.1
 
 Patch. No API change.
