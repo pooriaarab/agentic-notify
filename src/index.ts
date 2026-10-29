@@ -26,3 +26,6 @@ export { createEmailChannel, TestEmailAdapter } from "./delivery/email.js";
 export type { EmailMessage, EmailPort, EmailChannelOptions } from "./delivery/email.js";
 export { DeliveryError } from "./delivery/types.js";
 export type { DeliveryChannel, Logger } from "./delivery/types.js";
+export { D1Store, migrateD1 } from "./adapters/d1.js";
+export type { D1Like } from "./adapters/d1.js";
+export type { RecipientExport } from "./core/gdpr.js";
