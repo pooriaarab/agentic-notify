@@ -1,0 +1,10 @@
+{
+  // Sample worker config. Rename agentic-notify on clone, then run
+  // wrangler deploy from the pack root.
+  "name": "agentic-notify",
+  "main": "src/worker.ts",
+  "compatibility_date": "2026-01-01",
+  "vars": {
+    "NOTIFY_NAME": "agentic-notify"
+  }
+}

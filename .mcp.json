@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "agentic-notify": {
+      "command": "npx",
+      "args": ["-y", "agentic-notify", "mcp"]
+    }
+  }
+}
