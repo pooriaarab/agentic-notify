@@ -30,7 +30,7 @@ export interface NotifierOptions {
 export interface SendResult {
   /** Null only when the recipient muted the type. */
   notification: Notification | null;
-  /** True when the notification went to the inbox. */
+  /** True when the notification went to the inbox. Only then can `get` and `markRead` find its id. */
   stored: boolean;
   /** Channels the delivery layer must serve. Empty when muted. */
   channels: Channel[];
@@ -150,14 +150,18 @@ export function createNotifier(options: NotifierOptions) {
 
   async function markAllRead(recipient: Recipient): Promise<number> {
     let count = 0;
+    const tried = new Set<string>();
     for (;;) {
       const page = await list(recipient, { unreadOnly: true, limit: 100 });
-      let progress = 0;
-      // Count only our own wins, so two concurrent calls do not both claim an item.
-      for (const n of page.items) if ((await markReadOnce(recipient, n.id)).won) progress++;
-      count += progress;
-      // Stop on an empty pass, so a store that filters wrongly cannot loop forever.
-      if (progress === 0) return count;
+      // Try each id once. A store that filters wrongly then cannot loop forever,
+      // and losing a race for an item does not end the run.
+      const fresh = page.items.filter((n) => !tried.has(n.id));
+      if (fresh.length === 0) return count;
+      for (const n of fresh) {
+        tried.add(n.id);
+        // Count only our own wins, so two concurrent calls do not both claim an item.
+        if ((await markReadOnce(recipient, n.id)).won) count++;
+      }
     }
   }
 

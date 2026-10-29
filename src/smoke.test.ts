@@ -10,7 +10,7 @@ describe("faces", () => {
   test("cli prints the version and rejects unknown commands", async () => {
     const out: string[] = [];
     const err: string[] = [];
-    const io = { out: (l: string) => out.push(l), err: (l: string) => err.push(l) };
+    const io = { out: (l: string) => void out.push(l), err: (l: string) => void err.push(l), env: {} };
     expect(await runCli(["--version"], io)).toBe(0);
     expect(out).toEqual([VERSION]);
     expect(await runCli(["nope"], io)).toBe(2);

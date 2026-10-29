@@ -13,6 +13,8 @@ env:
 
 jobs:
   publish:
+    # Only the release branch may publish, also for manual runs.
+    if: github.ref == 'refs/heads/release'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
@@ -37,14 +39,15 @@ jobs:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
       - name: Publish to ants.land
         run: |
-          echo "//npm.ants.land/:_authToken=$ANTS_TOKEN" >> "${NPM_CONFIG_USERCONFIG:-$HOME/.npmrc}"
+          echo "//npm.ants.land/:_authToken=\${NODE_AUTH_TOKEN}" >> "${NPM_CONFIG_USERCONFIG:-$HOME/.npmrc}"
           NAME=$(node -p "require('./package.json').name")
           VER=$(node -p "require('./package.json').version")
-          if npm view "$NAME@$VER" version --registry https://npm.ants.land >/dev/null 2>&1; then
+          if OUT=$(npm view "$NAME@$VER" version --registry https://npm.ants.land 2>&1); then
             echo "$NAME@$VER on ants.land; skipping."
-          else
+          elif echo "$OUT" | grep -q E404; then
             npm publish --access public --registry https://npm.ants.land
+          else
+            echo "$OUT"; exit 1
           fi
         env:
           NODE_AUTH_TOKEN: ${{ secrets.ANTS_TOKEN }}
-          ANTS_TOKEN: ${{ secrets.ANTS_TOKEN }}

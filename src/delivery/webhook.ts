@@ -102,11 +102,14 @@ export function createWebhookChannel(options: WebhookOptions): DeliveryChannel {
   const random = options.random ?? Math.random;
   const now = options.now ?? (() => Date.now());
   if (!Number.isInteger(maxAttempts) || maxAttempts < 1) throw new RangeError("maxAttempts must be 1 or more");
+  for (const [name, value] of [["baseDelayMs", base], ["maxDelayMs", cap], ["timeoutMs", timeoutMs]] as const) {
+    if (!Number.isFinite(value) || value < 0) throw new RangeError(`${name} must be a finite number of 0 or more`);
+  }
 
   return {
     async deliver(n) {
       const target = await options.resolve(n.recipient);
-      if (!target) return;
+      if (!target) return "skipped";
       assertSecret(target.secret);
       const url = new URL(target.url);
       if (url.protocol !== "https:" && !(options.allowInsecure && url.protocol === "http:")) {
@@ -126,7 +129,7 @@ export function createWebhookChannel(options: WebhookOptions): DeliveryChannel {
             headers: { "content-type": "application/json", [SIGNATURE_HEADER]: signature, "x-notify-id": n.id },
             body,
           });
-          if (res.status >= 200 && res.status < 300) return;
+          if (res.status >= 200 && res.status < 300) return "sent";
           lastReason = `status ${res.status}`;
           retry = retryable(res.status);
         } catch (error) {

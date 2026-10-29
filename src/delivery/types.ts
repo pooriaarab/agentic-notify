@@ -2,7 +2,8 @@ import type { Notification } from "../core/types.js";
 
 /** A delivery channel other than the inbox. */
 export interface DeliveryChannel {
-  deliver(notification: Notification): Promise<void>;
+  /** Resolves "skipped" when the recipient has no target (no endpoint, no address). Throws on failure. */
+  deliver(notification: Notification): Promise<"sent" | "skipped">;
 }
 
 export class DeliveryError extends Error {

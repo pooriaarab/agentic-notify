@@ -166,3 +166,6 @@ export function storeContract(name: string, make: () => Promise<Store>, makePeer
     });
   });
 }
+
+/** Mail adapter that keeps messages in memory. For tests only. */
+export { TestEmailAdapter } from "./delivery/email.js";
