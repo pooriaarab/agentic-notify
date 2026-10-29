@@ -1,10 +1,16 @@
 {
-  // Sample worker config. Rename agentic-notify on clone, then run
-  // wrangler deploy from the pack root.
+  // Sample worker config. Create the database in the EU first:
+  //   wrangler d1 create agentic-notify --location weur
+  // Put its id below, then set the secret NOTIFY_TOKENS and run wrangler deploy.
   "name": "agentic-notify",
   "main": "src/worker.ts",
   "compatibility_date": "2026-01-01",
   "vars": {
     "NOTIFY_NAME": "agentic-notify"
-  }
+  },
+  "d1_databases": [
+    { "binding": "DB", "database_name": "agentic-notify", "database_id": "REPLACE_WITH_YOUR_D1_ID" }
+  ],
+  // Optional: sweep expired notifications daily. Set NOTIFY_RETENTION_DAYS in vars too.
+  "triggers": { "crons": ["17 3 * * *"] }
 }

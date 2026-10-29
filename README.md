@@ -34,6 +34,7 @@ const { items } = await notifier.list({ kind: "agent", id: "helper" });
 Worker (D1 binding `DB`, secret `NOTIFY_TOKENS`):
 
 ```sh
+# Create the database first: npx wrangler d1 create agentic-notify --location weur
 # NOTIFY_TOKENS is JSON: { "<token of 32+ bytes>": { "kind": "human", "id": "ana", "canSend": true } }
 npx wrangler secret put NOTIFY_TOKENS
 npx wrangler deploy
