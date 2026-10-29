@@ -8,6 +8,14 @@ import { NotFoundError, type Notifier } from "./core/service.js";
 import { preferencesSchema, resourceRefSchema, typeNameSchema, recipientSchema, type Recipient } from "./core/types.js";
 import type { createDispatcher } from "./delivery/dispatch.js";
 
+/**
+ * A bad request as a ZodError. In zod 4 a bare `new ZodError(...)` is not an `Error`, so Hono would
+ * skip `onError` and answer 500. A failed parse builds the real class.
+ */
+function invalidInput(path: string[], message: string): ZodError {
+  return z.string().refine(() => false, { message, path }).safeParse("").error as ZodError;
+}
+
 export interface AppOptions {
   notifier: Notifier;
   /** When set, sends also go to webhook and email channels. */
@@ -47,7 +55,7 @@ export function createApp(options: AppOptions) {
     try {
       return await c.req.json();
     } catch {
-      throw new ZodError([{ code: "custom", path: [], message: "body must be JSON" }]);
+      throw invalidInput([], "body must be JSON");
     }
   }
 
@@ -58,7 +66,7 @@ export function createApp(options: AppOptions) {
       return c.json(await notifier.list(c.var.me, { unreadOnly: q.unread === "1" || q.unread === "true", limit, cursor: q.cursor }));
     } catch (error) {
       // The store throws RangeError for a cursor it cannot read. That is caller input.
-      if (error instanceof RangeError) throw new ZodError([{ code: "custom", path: ["cursor"], message: "bad cursor" }]);
+      if (error instanceof RangeError) throw invalidInput(["cursor"], "bad cursor");
       throw error;
     }
   });
