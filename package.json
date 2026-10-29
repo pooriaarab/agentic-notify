@@ -61,6 +61,7 @@
     "clean": "rm -rf dist",
     "prepack": "npm run build",
     "ci:local": "npm run build && npm run typecheck && npm run check:worker && npm test",
+    "deploy:demo": "wrangler deploy --config wrangler.demo.jsonc",
     "check:worker": "esbuild src/worker.ts --bundle --platform=neutral --format=esm --log-level=warning --outfile=node_modules/.cache/worker-check.js"
   },
   "dependencies": {

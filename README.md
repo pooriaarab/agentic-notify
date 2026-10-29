@@ -7,6 +7,17 @@ Notifications for humans and agents: in-app inbox, email and webhook delivery, w
 
 **Status: 0.1.0, first release.** Works today: the notification model, preferences and mute, digest, a store port from agentic-identity with its memory and D1 adapters, signed webhook and email delivery through a dispatcher, an HTTP API in a Worker, an SDK, a CLI, MCP tools, per-recipient export and erase, and a retention sweep. Not done: a real email provider adapter, webhook endpoint management, and a web UI.
 
+## Live demo
+
+A demo Worker runs at https://agentic-notify-demo.hello-fd1.workers.dev. `GET /health` answers 200. The `/api/v1` routes need a bearer token, so without one they answer 401. The demo keeps its data in the EU and sweeps notifications after 7 days.
+
+Redeploy your own copy with `wrangler.demo.jsonc` (create the D1 database with `--location weur`, put its id in the file, set the `NOTIFY_TOKENS` secret):
+
+```sh
+npx wrangler secret put NOTIFY_TOKENS --config wrangler.demo.jsonc
+WRANGLER_SEND_METRICS=false npm run deploy:demo
+```
+
 ## Install
 
 ```sh
