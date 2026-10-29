@@ -2,6 +2,11 @@
 
 All notable changes to this package are listed here.
 
+## Unreleased
+
+- The MCP tools advertise new input schemas, from zod 4. Object schemas no longer set `additionalProperties: false`, and integer fields carry a min and max. Extra keys are still stripped at runtime. Invalid-argument error text uses zod 4 wording. The status codes and the result shape do not change.
+- The MCP SDK floor is `^1.23.0`, the first release that accepts zod 4 schemas.
+
 ## 0.4.0
 
 Breaking for the Worker and for library users who set their own auth. The SDK, the CLI, the MCP server and the HTTP routes keep their shape.
