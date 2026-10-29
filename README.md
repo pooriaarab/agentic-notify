@@ -5,11 +5,13 @@
 
 Notifications for humans and agents: in-app inbox, email and webhook delivery, with a CLI, API, MCP server and SDK.
 
-**Status: 0.5.1.** Breaking for Worker auth, see "Migrating from `NOTIFY_TOKENS`" below. Breaking for 0.1.0 code and databases, see the CHANGELOG upgrade steps. Works today: the notification model, preferences and mute, digest, a store port from agentic-identity with its memory and D1 adapters, signed webhook and email delivery through a dispatcher, an HTTP API in a Worker, an SDK, a CLI, MCP tools, per-recipient export and erase, and a retention sweep. Not done: a real email provider adapter, webhook endpoint management, and a web UI.
+**Status: 0.6.0.** Breaking for Worker auth, see "Migrating from `NOTIFY_TOKENS`" below. Breaking for 0.1.0 code and databases, see the CHANGELOG upgrade steps. Works today: the notification model, preferences and mute, digest, a store port from agentic-identity with its memory and D1 adapters, signed webhook and email delivery through a dispatcher, an HTTP API in a Worker, an SDK, a CLI, MCP tools, per-recipient export and erase, a retention sweep, and a React bell and inbox (`agentic-notify/ui`). Not done: a real email provider adapter, webhook endpoint management, and a full-page inbox app.
 
 ## Live demo
 
 A demo Worker runs at https://agentic-notify-demo.hello-fd1.workers.dev. `GET /health` answers 200. The `/api/v1` routes need a key, so without one they answer 401. The demo keeps its data in the EU and sweeps notifications after 7 days.
+
+The demo page is in `ui/` and the Worker serves it at `/ui/` after `npm run deploy:demo`. Sign in with a key that holds `notify:read` and `notify:write`. Add `notify-send:write` to use the send form.
 
 Redeploy your own copy with `wrangler.demo.jsonc` (create the D1 database with `--location weur`, put its id in the file, then add principals and keys, see Identity):
 
@@ -122,6 +124,35 @@ Library users: `createWorker` takes `auth` in place of `resolver`. `authorizeSen
 - Logs hold ids, channel names and error names only. They never hold bodies or addresses.
 - Erase removes a recipient's own notifications and preferences. Notifications that name the person only as actor stay with their recipients.
 
+## Bell and inbox (React)
+
+`agentic-notify/ui` is a bell button with an unread count. It opens a popover with the inbox: the list, mark read, mark all read, and an empty state. It refreshes by itself over the HTTP API, so new notifications show without a reload. React 19 is a peer dependency. The package depends on `agentic-design` for the parts and the tokens.
+
+```tsx
+import { NotificationBell } from "agentic-notify/ui";
+import "agentic-design/styles.css";
+import "agentic-notify/ui.css";
+
+<NotificationBell baseUrl="https://notify.example.com" getToken={() => session.token} />;
+```
+
+- The Worker sends no CORS headers. Serve the bell from the Worker's own origin, or put the Worker behind a proxy on your app's origin. A cross-origin page cannot call it, and the popover then shows a load error.
+- `getToken` runs before each request. Return the key of the signed-in person or agent. The server checks every call.
+- `baseUrl` must be `https:`. Plain `http:` works for localhost only. A bad `baseUrl`, `pollMs` or `limit` throws a `TypeError`.
+- When the signed-in caller changes, give the bell a new `key` (React) or call `update` (`mount` remounts it). Then one caller's list never shows under another's token.
+- A call that takes over 10 seconds ends as a load error. Polling stops after a refused token and when `getToken` throws, until the person opens the bell or presses Try again. After a rate limit (429) it pauses for a minute.
+- `align` (`"start"` or `"end"`, default `"end"`) sets which edge of the bell the popover lines up with. Use `"start"` for a bell near the left edge. On a phone the popover spans the width under the bell.
+- The bell name says "could not load" when a call fails, so a failure never reads as an empty inbox.
+- `mount` does not change the page theme.
+- `pollMs` sets the refresh interval (default 15000, 0 turns it off). The page also refreshes when the tab becomes visible (not after a refused token). `limit` sets the list size (default 20).
+- A refused or failed call shows an alert in the popover. The list never shows a failed call as success.
+- Notifications from an agent carry the words "Sent by an agent".
+- `useNotifications(options)` gives the state and the actions without the markup. `<Inbox state={...} />` renders the list alone from that state. `headingId` is optional. Set `keepFocus` to move focus into the list after a mark call removes the focused button. The bell sets it.
+- Screenshots of each view, light and dark, are in `docs/screenshots`. Refresh them with `SCREENSHOTS=docs/screenshots npm run test:ui`.
+- Install `agentic-design` in your app too, so your bundler can resolve `agentic-design/styles.css`. Use one copy of it.
+- Without React, `mount(element, options)` renders the bell into an element and returns `update` and `unmount`.
+- It uses `agd-` classes only. Keyboard: Enter opens, Escape closes and returns focus. It passes an axe WCAG 2.2 AA scan in light and dark, and it fits a 390px screen.
+
 ## Account export and erase
 
 A host that runs account export and erase across many packages calls `notifyAccount` from `agentic-notify/account`. It has `exportAccount(subject, { notifier })` and `eraseAccount(subject, { notifier })`, so the host does not read the storage layout. The subject is an id and a kind. A person or a user token is a `human` recipient. Every agent kind is an `agent` recipient. The export has plain JSON in `notifications` and `preferences`. The erase removes both and returns counts. A repeat of the erase counts zero. Notifications that name the subject only as actor stay with their recipients. The shape is provisional: it is the `AccountPackage` contract that a later `agentic-identity` release adds to `agentic-identity/account`.
@@ -156,6 +187,8 @@ runStoreContract((options) => createMemoryStore(options));
 npm ci
 npm run ci:local
 ```
+
+`npm test` skips the `./ui` export check until you run `npm run build`. `ci:local` builds first and also runs the browser tests (`npm run test:ui`). Install the browser once with `npx playwright install chromium`.
 
 ## License
 

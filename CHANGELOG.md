@@ -2,6 +2,16 @@
 
 All notable changes to this package are listed here.
 
+## 0.6.0
+
+Minor. New export, no change to the SDK, CLI, MCP or HTTP shape.
+
+- New export `agentic-notify/ui` (React, peer `react` and `react-dom` 19) with `NotificationBell`, `Inbox`, `useNotifications` and `mount`. The stylesheet is `agentic-notify/ui.css`. It needs `agentic-design/styles.css` too.
+- The bell shows the unread count, opens an inbox popover, marks one or all read, shows an empty state, and refreshes over the existing HTTP API.
+- New dependency `agentic-design` `^0.5.0`.
+- The demo Worker serves a demo page at `/ui/`. Run `npm run build:ui` before `npm run deploy:demo` (the script does it).
+- New browser tests with Playwright and axe (`npm run test:ui`).
+
 ## 0.5.1
 
 Patch. No change to the SDK, CLI, MCP or HTTP shape.

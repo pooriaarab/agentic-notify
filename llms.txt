@@ -5,6 +5,7 @@ Notifications for humans and agents: in-app inbox, email and webhook delivery.
 - SDK: import { createClient } from "agentic-notify/sdk".
 - CLI: npx agentic-notify --help.
 - MCP: npx agentic-notify mcp, then call list_notifications.
+- UI (React): import { NotificationBell } from "agentic-notify/ui"; also import "agentic-design/styles.css" and "agentic-notify/ui.css". Props: baseUrl, getToken, pollMs, limit. Also useNotifications, Inbox, mount(element, options).
 
 ## Docs
 
