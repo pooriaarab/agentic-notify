@@ -95,6 +95,8 @@ export function useNotifications(options: NotifyUiOptions): NotificationsState {
   const [busy, setBusy] = useState(false);
   const latest = useRef(0);
   const alive = useRef(true);
+  // Bumped when the host changes, so a mark call started under the old host cannot write into the new one.
+  const hostGen = useRef(0);
 
   // A slow network ends in an error after 10 seconds, and not in a list that loads forever.
   const timed: typeof fetch = useCallback((input, init) => (doFetch.current ?? fetch)(input, { ...init, signal: AbortSignal.timeout(10_000) }), []);
@@ -152,6 +154,8 @@ export function useNotifications(options: NotifyUiOptions): NotificationsState {
 
   const mutate = useCallback(
     async (run: (client: Awaited<ReturnType<typeof api>>) => Promise<unknown>) => {
+      const gen = hostGen.current;
+      const current = () => alive.current && gen === hostGen.current;
       setBusy(true);
       setActionError(null);
       try {
@@ -160,9 +164,9 @@ export function useNotifications(options: NotifyUiOptions): NotificationsState {
         await refreshNow.current();
       } catch (e) {
         const noScope = e instanceof ApiError && e.status === 403;
-        if (alive.current) setActionError(noScope ? "This token cannot make that change. It needs the notify:write scope." : describeError(e, "The change was not saved. Try again."));
+        if (current()) setActionError(noScope ? "This token cannot make that change. It needs the notify:write scope." : describeError(e, "The change was not saved. Try again."));
       } finally {
-        if (alive.current) setBusy(false);
+        if (current()) setBusy(false);
       }
     },
     [api],
@@ -173,6 +177,8 @@ export function useNotifications(options: NotifyUiOptions): NotificationsState {
 
   // A new baseUrl or limit is another server or list: drop the old answer until the new one arrives.
   useEffect(() => {
+    hostGen.current += 1;
+    setBusy(false);
     setItems([]);
     setUnread(0);
     setLoading(true);
