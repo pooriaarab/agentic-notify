@@ -27,7 +27,7 @@ export interface Store {
   put(collection: string, id: string, doc: Doc): Promise<void>;
   /** Insert only. Returns false when the id exists. Atomic. */
   create(collection: string, id: string, doc: Doc): Promise<boolean>;
-  /** Replace only when the stored doc still equals `expected`. Atomic. */
+  /** Replace only when the stored doc still equals `expected`. Equality is structural: key order does not matter. Atomic. */
   replaceIf(collection: string, id: string, expected: Doc, next: Doc): Promise<boolean>;
   delete(collection: string, id: string): Promise<void>;
   query(collection: string, query?: Query): Promise<Page>;
@@ -72,8 +72,17 @@ function compare(a: Scalar, b: Scalar): number {
   return a < b ? -1 : 1;
 }
 
+/** JSON with object keys sorted, so equal docs give equal text. Adapters that compare text use it. */
+export function canonicalJson(value: unknown): string {
+  return JSON.stringify(value, (_k, v: unknown) =>
+    v && typeof v === "object" && !Array.isArray(v)
+      ? Object.fromEntries(Object.entries(v).sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0)))
+      : v,
+  );
+}
+
 function sameDoc(a: Doc, b: Doc): boolean {
-  return JSON.stringify(a) === JSON.stringify(b);
+  return canonicalJson(a) === canonicalJson(b);
 }
 
 /** In-memory adapter. Also the reference for the contract suite. */

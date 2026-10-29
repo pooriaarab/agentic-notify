@@ -88,6 +88,15 @@ describe("read state", () => {
   });
 });
 
+describe("concurrent markAllRead", () => {
+  test("two calls at once count each item once", async () => {
+    const n = setup();
+    for (let i = 0; i < 10; i++) await n.send(input());
+    const [a, b] = await Promise.all([n.markAllRead(alice), n.markAllRead(alice)]);
+    expect(a + b).toBe(10);
+  });
+});
+
 describe("preferences", () => {
   test("defaults, per-type channels and inbox off", async () => {
     const n = setup();

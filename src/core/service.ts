@@ -129,15 +129,19 @@ export function createNotifier(options: NotifierOptions) {
     return fromDoc(await load(recipient, id));
   }
 
-  async function markRead(recipient: Recipient, id: string): Promise<Notification> {
+  async function markReadOnce(recipient: Recipient, id: string): Promise<{ notification: Notification; won: boolean }> {
     for (let attempt = 0; attempt < 5; attempt++) {
       const doc = await load(recipient, id);
       const n = fromDoc(doc);
-      if (n.readAt !== null) return n;
+      if (n.readAt !== null) return { notification: n, won: false };
       const next = notificationSchema.parse({ ...n, readAt: now() });
-      if (await store.replaceIf(NOTES, id, doc, toDoc(next))) return next;
+      if (await store.replaceIf(NOTES, id, doc, toDoc(next))) return { notification: next, won: true };
     }
     throw new Error("could not mark read: too much contention");
+  }
+
+  async function markRead(recipient: Recipient, id: string): Promise<Notification> {
+    return (await markReadOnce(recipient, id)).notification;
   }
 
   async function markAllRead(recipient: Recipient): Promise<number> {
@@ -145,10 +149,8 @@ export function createNotifier(options: NotifierOptions) {
     for (;;) {
       const page = await list(recipient, { unreadOnly: true, limit: 100 });
       let progress = 0;
-      for (const n of page.items) {
-        // markRead returns the stored doc, so a concurrent reader may have won. Count only our wins.
-        if (n.readAt === null && (await markRead(recipient, n.id)).readAt !== null) progress++;
-      }
+      // Count only our own wins, so two concurrent calls do not both claim an item.
+      for (const n of page.items) if ((await markReadOnce(recipient, n.id)).won) progress++;
       count += progress;
       // Stop on an empty pass, so a store that filters wrongly cannot loop forever.
       if (progress === 0) return count;
