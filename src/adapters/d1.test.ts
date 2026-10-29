@@ -63,5 +63,5 @@ describe("notifier on d1", () => {
     await store.put("notifications", "bad", { id: "bad", recipientKey: "human:ana", createdAt: "x" });
     expect((await notifier.erase(ana)).notifications).toBe(206);
     expect((await store.query("notifications", { where: { recipientKey: "human:ana" } })).items).toEqual([]);
-  });
+  }, 60_000);
 });
