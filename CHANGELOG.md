@@ -2,6 +2,12 @@
 
 All notable changes to this package are listed here.
 
+## 0.4.2
+
+Patch. No change to the SDK, CLI, MCP or HTTP shape.
+
+- `agentic-identity` is `^0.8.0`. The lockfile follows. The 0.8.0 additions (`tokens create`, `delegations create`) are not used here.
+
 ## 0.4.1
 
 Patch. No change to the SDK, CLI or HTTP shape. The MCP tools advertise new input schemas.
