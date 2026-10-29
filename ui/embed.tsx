@@ -25,6 +25,7 @@ export function mount(element: HTMLElement, options: NotifyUiOptions): MountedBe
   const root = createRoot(element);
   // A new key on each update remounts the bell, so one caller's list never shows under another's token.
   let generation = 0;
+  let gone = false;
   const render = (next: NotifyUiOptions) =>
     root.render(
       <StrictMode>
@@ -34,5 +35,16 @@ export function mount(element: HTMLElement, options: NotifyUiOptions): MountedBe
       </StrictMode>,
     );
   render(options);
-  return { update: (next) => (checkOptions(next), generation++, render(next)), unmount: () => root.unmount() };
+  return {
+    update: (next) => {
+      if (gone) throw new TypeError("the bell was unmounted: mount it again");
+      checkOptions(next);
+      generation++;
+      render(next);
+    },
+    unmount: () => {
+      gone = true;
+      root.unmount();
+    },
+  };
 }

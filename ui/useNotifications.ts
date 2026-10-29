@@ -36,6 +36,7 @@ export interface NotificationsState {
 
 export function describeError(error: unknown, action = "Notifications could not be loaded. Try again."): string {
   if (error instanceof ApiError && (error.status === 401 || error.status === 403)) return "The token was not accepted.";
+  if (error instanceof ApiError && error.status === 429) return "Too many requests. Wait a moment, then try again.";
   if (error instanceof ApiError && error.status >= 400 && error.status < 500) return "The server refused the request.";
   return action;
 }
@@ -84,7 +85,11 @@ export function useNotifications(options: NotifyUiOptions): NotificationsState {
     let timer: ReturnType<typeof setTimeout> | undefined;
     const limit = new Promise<never>((_, reject) => (timer = setTimeout(() => reject(new Error("token timeout")), 10_000)));
     try {
-      const token = await Promise.race([Promise.resolve(getToken.current()), limit]);
+      // A getToken that throws means the session is gone: treat it as a refused token.
+      const token = await Promise.race([Promise.resolve().then(() => getToken.current()), limit]).catch((e: unknown) => {
+        if (e instanceof Error && e.message === "token timeout") throw e;
+        return "";
+      });
       // Signed out is a refused token, not a network failure.
       if (!token) throw new ApiError(401, "unauthorized");
       return createClient({ baseUrl, token, fetch: timed });
@@ -110,7 +115,7 @@ export function useNotifications(options: NotifyUiOptions): NotificationsState {
       setError(null);
     } catch (e) {
       if (!alive.current || ticket !== latest.current) return;
-      refused.current = e instanceof ApiError && (e.status === 401 || e.status === 403);
+      refused.current = e instanceof ApiError && (e.status === 401 || e.status === 403 || e.status === 429);
       setError(describeError(e));
     } finally {
       if (ticket === latest.current) inFlight.current = false;
@@ -124,13 +129,13 @@ export function useNotifications(options: NotifyUiOptions): NotificationsState {
       setActionError(null);
       try {
         await run(await api());
+        // Busy stays on until the list is fresh, so a second press cannot send a second call.
+        await refresh();
       } catch (e) {
         if (alive.current) setActionError(describeError(e, "The change was not saved. Try again."));
-        return;
       } finally {
         if (alive.current) setBusy(false);
       }
-      await refresh();
     },
     [api, refresh],
   );
