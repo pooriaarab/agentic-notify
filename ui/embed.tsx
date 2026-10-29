@@ -2,7 +2,7 @@
 // design stylesheet `agentic-design/styles.css` too. React is a peer dependency.
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
-import { ThemeProvider, TooltipProvider } from "agentic-design/react";
+import { TooltipProvider } from "agentic-design/react";
 import "./app.css";
 import { NotificationBell } from "./Bell.js";
 import { checkOptions, type NotifyUiOptions } from "./useNotifications.js";
@@ -18,7 +18,7 @@ export interface MountedBell {
   unmount(): void;
 }
 
-/** Render the bell into an element, for an app that does not use React itself. */
+/** Render the bell into an element, for an app that does not use React itself. It does not set the page theme: the tokens follow the page's `data-theme` or the system setting. */
 export function mount(element: HTMLElement, options: NotifyUiOptions): MountedBell {
   if (!(element instanceof HTMLElement)) throw new TypeError("mount needs an element to render into");
   checkOptions(options);
@@ -26,11 +26,9 @@ export function mount(element: HTMLElement, options: NotifyUiOptions): MountedBe
   const render = (next: NotifyUiOptions) =>
     root.render(
       <StrictMode>
-        <ThemeProvider>
-          <TooltipProvider>
-            <NotificationBell key={next.baseUrl} {...next} />
-          </TooltipProvider>
-        </ThemeProvider>
+        <TooltipProvider>
+          <NotificationBell key={next.baseUrl} {...next} />
+        </TooltipProvider>
       </StrictMode>,
     );
   render(options);

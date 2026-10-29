@@ -37,11 +37,12 @@
   font-family: var(--agd-font-family-sans);
 }
 /* The panel is a container that takes focus when it opens. The controls inside show their own focus ring. */
+.agd-notify__panel[data-align="start"] { right: auto; left: 0; }
 .agd-notify__panel:focus { outline: none; }
 /* On a phone the panel spans the screen under the top bar, so it never runs off the edge. */
 @media (max-width: 30rem) {
   .agd-notify { position: static; }
-  .agd-notify__panel { position: fixed; top: calc(var(--agd-size-topbar) + var(--agd-space-2)); right: var(--agd-space-4); left: var(--agd-space-4); width: auto; }
+  .agd-notify__panel { position: fixed; top: var(--agd-notify-top, var(--agd-size-topbar)); right: var(--agd-space-4); left: var(--agd-space-4); width: auto; }
 }
 .agd-notify__inbox { display: flex; flex-direction: column; min-height: 0; }
 .agd-notify__head { display: flex; align-items: center; justify-content: space-between; gap: var(--agd-space-3); padding: var(--agd-space-3) var(--agd-space-4); border-bottom: 1px solid var(--agd-color-border); }

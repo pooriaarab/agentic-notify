@@ -7,9 +7,9 @@ export interface NotifyUiOptions {
   baseUrl: string;
   /** Called before each request. Return the bearer token of the signed-in person or agent. The server checks every call against it. */
   getToken: () => string | Promise<string>;
-  /** Milliseconds between refreshes while the page is visible. Default 15000. Use 0 to turn polling off. */
+  /** Milliseconds between refreshes while the page is visible. Default 15000. Use 0 to turn polling off, or at least 1000. */
   pollMs?: number;
-  /** How many notifications the list holds. Default 20. */
+  /** How many notifications the list holds. Default 20, from 1 to 100. */
   limit?: number;
   /** A fetch to use in place of the global one. */
   fetch?: typeof fetch;
@@ -44,6 +44,12 @@ export function checkOptions(options: NotifyUiOptions): void {
   createClient({ baseUrl: options.baseUrl, token: "check" });
   const url = new URL(options.baseUrl);
   if (url.username || url.password) throw new TypeError("baseUrl must not hold user info");
+  // The bearer token crosses this link on every poll. Plain http is for a local Worker only.
+  const local = ["localhost", "127.0.0.1", "[::1]"].includes(url.hostname);
+  if (url.protocol !== "https:" && !(url.protocol === "http:" && local)) throw new TypeError("baseUrl must use https");
+  const { pollMs, limit } = options;
+  if (pollMs !== undefined && !(pollMs === 0 || (Number.isFinite(pollMs) && pollMs >= 1000))) throw new TypeError("pollMs must be 0 or at least 1000");
+  if (limit !== undefined && !(Number.isInteger(limit) && limit >= 1 && limit <= 100)) throw new TypeError("limit must be a whole number from 1 to 100");
 }
 
 /**

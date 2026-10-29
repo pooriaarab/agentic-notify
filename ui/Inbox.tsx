@@ -57,7 +57,7 @@ function Item({ n, busy, onRead }: { n: Notification; busy: boolean; onRead(id: 
           </a>
         )}
         {unread && (
-          <Button size="sm" variant="ghost" disabled={busy} aria-label={`Mark read: ${n.body}`} onClick={() => onRead(n.id)}>
+          <Button size="sm" variant="ghost" aria-disabled={busy || undefined} aria-label={`Mark read: ${n.body}`} onClick={() => !busy && onRead(n.id)}>
             Mark read
           </Button>
         )}
@@ -75,7 +75,7 @@ export function Inbox({ state, headingId }: { state: NotificationsState; heading
         <h2 id={headingId} className="agd-notify__title">
           Notifications
         </h2>
-        <Button size="sm" variant="secondary" disabled={busy || unread === 0} onClick={() => void markAllRead()}>
+        <Button size="sm" variant="secondary" disabled={unread === 0} aria-disabled={busy || undefined} onClick={() => !busy && void markAllRead()}>
           Mark all read
         </Button>
       </div>

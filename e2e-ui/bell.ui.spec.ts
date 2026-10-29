@@ -68,9 +68,17 @@ test("bell: sign in, live update, read one, read all, keyboard, phone width", as
   await audit(page, "03-inbox");
 
   // Mark one read.
-  await panel.getByRole("button", { name: "Mark read: Build 7 finished" }).click();
+  await panel.getByRole("button", { name: "Mark read: Build 7 finished" }).focus();
+  await page.keyboard.press("Enter");
   await expect(page.getByRole("button", { name: "Notifications, 1 unread" })).toBeVisible();
   await expect(panel.getByRole("button", { name: /^Mark read:/ })).toHaveCount(1);
+  // The focused button is gone: focus stays in the popover, so Escape still closes it.
+  await expect(panel).toBeFocused();
+  await page.keyboard.press("Escape");
+  await expect(panel).toBeHidden();
+  await expect(page.getByRole("button", { name: "Notifications, 1 unread" })).toBeFocused();
+  await page.keyboard.press("Enter");
+  await expect(panel).toBeFocused();
 
   // Mark all read.
   await panel.getByRole("button", { name: "Mark all read" }).click();
@@ -106,7 +114,10 @@ test("bell: a refused token shows an alert, not an empty inbox", async ({ page }
   await page.goto("/ui/");
   await page.evaluate((t) => sessionStorage.setItem("notify-demo-token", t), "revoked-token-0123456789-0123456789-0123");
   await page.reload();
-  await page.getByRole("button", { name: "Notifications", exact: true }).click();
+  // A failed load is not "nothing unread": the bell says so before it is opened.
+  const failed = page.getByRole("button", { name: "Notifications, could not load" });
+  await expect(failed).toBeVisible();
+  await failed.click();
   const panel = page.getByRole("dialog", { name: "Notifications" });
   await expect(panel.getByRole("alert")).toContainText("The token was not accepted");
   await expect(panel.getByText("You are all caught up")).toHaveCount(0);

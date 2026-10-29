@@ -1,4 +1,4 @@
-import { useEffect, useId, useRef, useState } from "react";
+import { useEffect, type CSSProperties, useId, useRef, useState } from "react";
 import { IconButton } from "agentic-design/react";
 import { Inbox } from "./Inbox.js";
 import { useNotifications, type NotifyUiOptions } from "./useNotifications.js";
@@ -16,7 +16,7 @@ function BellIcon() {
  * A bell button with the unread count. It opens a popover with the inbox: mark one or all read,
  * an empty state, and a live refresh. Escape, a click outside, or Tab out closes it.
  */
-export function NotificationBell(options: NotifyUiOptions) {
+export function NotificationBell(options: NotifyUiOptions & { /** Which edge of the bell the popover lines up with. Default "end" (opens to the left). */ align?: "start" | "end" }) {
   const state = useNotifications(options);
   const [open, setOpen] = useState(false);
   const root = useRef<HTMLDivElement>(null);
@@ -24,7 +24,17 @@ export function NotificationBell(options: NotifyUiOptions) {
   const panel = useRef<HTMLDivElement>(null);
   const panelId = useId();
   const headingId = useId();
-  const { unread } = state;
+  const { unread, error, loading } = state;
+  const [top, setTop] = useState(0);
+  // After a mark call the focused control can vanish. Keep focus inside the popover, so Escape and Tab still work.
+  useEffect(() => {
+    if (open && document.activeElement === document.body) panel.current?.focus();
+  }, [open, state.items, state.busy]);
+  // On a phone the popover is fixed under the bell, wherever the host put it.
+  useEffect(() => {
+    if (open) setTop((button.current?.getBoundingClientRect().bottom ?? 0) + 8);
+  }, [open]);
+  const status = error ? (unread > 0 ? `${unread} unread, could not refresh` : "could not load") : unread > 0 ? `${unread} unread` : "";
 
   useEffect(() => {
     if (!open) return;
@@ -55,7 +65,7 @@ export function NotificationBell(options: NotifyUiOptions) {
         <IconButton
           ref={button}
           variant="ghost"
-          label={unread > 0 ? `Notifications, ${unread} unread` : "Notifications"}
+          label={status ? `Notifications, ${status}` : "Notifications"}
           tooltip={false}
           icon={<BellIcon />}
           aria-haspopup="dialog"
@@ -66,17 +76,17 @@ export function NotificationBell(options: NotifyUiOptions) {
             if (!open) void state.refresh();
           }}
         />
-        {unread > 0 && (
+        {(unread > 0 || error) && (
           <span className="agd-notify__count" aria-hidden="true">
-            {unread > 99 ? "99+" : unread}
+            {unread > 0 ? (unread > 99 ? "99+" : unread) : "!"}
           </span>
         )}
       </span>
       <span className="agd-sr-only" role="status">
-        {unread > 0 ? `${unread} unread notifications` : "No unread notifications"}
+        {loading ? "" : error ? `Notifications ${status}` : unread > 0 ? `${unread} unread notifications` : "No unread notifications"}
       </span>
       {open && (
-        <div ref={panel} id={panelId} className="agd-notify__panel" role="dialog" aria-labelledby={headingId} tabIndex={-1}>
+        <div ref={panel} id={panelId} className="agd-notify__panel" data-align={options.align ?? "end"} style={{ "--agd-notify-top": `${top}px` } as CSSProperties} role="dialog" aria-labelledby={headingId} tabIndex={-1}>
           <Inbox state={state} headingId={headingId} />
         </div>
       )}
