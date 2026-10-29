@@ -141,6 +141,7 @@ import "agentic-notify/ui.css";
 - `baseUrl` must be `https:`. Plain `http:` works for localhost only. A bad `baseUrl`, `pollMs` or `limit` throws a `TypeError`.
 - When the signed-in caller changes, give the bell a new `key` (React) or call `update` (`mount` remounts it). Then one caller's list never shows under another's token.
 - A call that takes over 10 seconds ends as a load error. Polling stops after a refused token until the person opens the bell or presses Try again.
+- Put a bell near the left edge of the page with `align="start"`, so the popover opens to the right.
 - `align` (`"start"` or `"end"`) sets which edge of the bell the popover lines up with. On a phone the popover spans the width under the bell.
 - The bell name says "could not load" when a call fails, so a failure never reads as an empty inbox.
 - `mount` does not change the page theme.
