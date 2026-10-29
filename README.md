@@ -140,11 +140,11 @@ import "agentic-notify/ui.css";
 - `getToken` runs before each request. Return the key of the signed-in person or agent. The server checks every call.
 - `baseUrl` must be `https:`. Plain `http:` works for localhost only. A bad `baseUrl`, `pollMs` or `limit` throws a `TypeError`.
 - When the signed-in caller changes, give the bell a new `key` (React) or call `update` (`mount` remounts it). Then one caller's list never shows under another's token.
-- A call that takes over 10 seconds ends as a load error. Polling stops after a refused token or a rate limit (429), and when `getToken` throws, until the person opens the bell or presses Try again.
+- A call that takes over 10 seconds ends as a load error. Polling stops after a refused token and when `getToken` throws, until the person opens the bell or presses Try again. After a rate limit (429) it pauses for a minute.
 - `align` (`"start"` or `"end"`, default `"end"`) sets which edge of the bell the popover lines up with. Use `"start"` for a bell near the left edge. On a phone the popover spans the width under the bell.
 - The bell name says "could not load" when a call fails, so a failure never reads as an empty inbox.
 - `mount` does not change the page theme.
-- `pollMs` sets the refresh interval (default 15000, 0 turns it off). The page also refreshes when the tab becomes visible (not after a refused token or a rate limit). `limit` sets the list size (default 20).
+- `pollMs` sets the refresh interval (default 15000, 0 turns it off). The page also refreshes when the tab becomes visible (not after a refused token). `limit` sets the list size (default 20).
 - A refused or failed call shows an alert in the popover. The list never shows a failed call as success.
 - Notifications from an agent carry the words "Sent by an agent".
 - `useNotifications(options)` gives the state and the actions without the markup. `<Inbox state={...} />` renders the list alone from that state. `headingId` is optional. Set `keepFocus` to move focus into the list after a mark call removes the focused button. The bell sets it.

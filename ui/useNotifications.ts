@@ -51,7 +51,7 @@ export function checkOptions(options: NotifyUiOptions): void {
   const local = ["localhost", "127.0.0.1", "[::1]"].includes(url.hostname);
   if (url.protocol !== "https:" && !(url.protocol === "http:" && local)) throw new TypeError("baseUrl must use https");
   const { pollMs, limit } = options;
-  if (pollMs !== undefined && !(pollMs === 0 || (Number.isFinite(pollMs) && pollMs >= 1000))) throw new TypeError("pollMs must be 0 or at least 1000");
+  if (pollMs !== undefined && !(pollMs === 0 || (Number.isFinite(pollMs) && pollMs >= 1000 && pollMs <= 2_147_483_647))) throw new TypeError("pollMs must be 0 or from 1000 to 2147483647");
   if (limit !== undefined && !(Number.isInteger(limit) && limit >= 1 && limit <= 100)) throw new TypeError("limit must be a whole number from 1 to 100");
 }
 
@@ -98,8 +98,9 @@ export function useNotifications(options: NotifyUiOptions): NotificationsState {
     }
   }, [baseUrl, timed]);
   const inFlight = useRef(false);
-  // After a refused token the polling stops. A person's own action or `refresh()` starts it again.
+  // After a refused token the polling stops. After a 429 it pauses for a minute. A person's own action or `refresh()` starts it again.
   const refused = useRef(false);
+  const pausedUntil = useRef(0);
 
   const refresh = useCallback(async () => {
     const ticket = ++latest.current;
@@ -117,7 +118,9 @@ export function useNotifications(options: NotifyUiOptions): NotificationsState {
       setError(null);
     } catch (e) {
       if (!alive.current || ticket !== latest.current) return;
-      refused.current = e instanceof ApiError && (e.status === 401 || e.status === 403 || e.status === 429);
+      refused.current = e instanceof ApiError && (e.status === 401 || e.status === 403);
+      // A rate limit is temporary: pause the polling for a minute.
+      if (e instanceof ApiError && e.status === 429) pausedUntil.current = Date.now() + 60_000;
       setError(describeError(e));
     } finally {
       if (ticket === latest.current) inFlight.current = false;
@@ -134,7 +137,8 @@ export function useNotifications(options: NotifyUiOptions): NotificationsState {
         // Busy stays on until the list is fresh, so a second press cannot send a second call.
         await refresh();
       } catch (e) {
-        if (alive.current) setActionError(describeError(e, "The change was not saved. Try again."));
+        const noScope = e instanceof ApiError && e.status === 403;
+        if (alive.current) setActionError(noScope ? "This token cannot make that change. It needs the notify:write scope." : describeError(e, "The change was not saved. Try again."));
       } finally {
         if (alive.current) setBusy(false);
       }
@@ -150,7 +154,7 @@ export function useNotifications(options: NotifyUiOptions): NotificationsState {
     void refresh();
     const visible = () => document.visibilityState === "visible";
     // A poll does not start while an earlier call runs or after a refused token.
-    const tick = () => visible() && !inFlight.current && !refused.current && void refresh();
+    const tick = () => visible() && !inFlight.current && !refused.current && Date.now() >= pausedUntil.current && void refresh();
     const timer = pollMs > 0 ? setInterval(tick, pollMs) : undefined;
     document.addEventListener("visibilitychange", tick);
     return () => {

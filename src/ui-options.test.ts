@@ -15,6 +15,7 @@ describe("ui options", () => {
     ["no getToken", { baseUrl: ok.baseUrl }, true],
     ["pollMs 0", { ...ok, pollMs: 0 }, false],
     ["pollMs 50", { ...ok, pollMs: 50 }, true],
+    ["pollMs too large", { ...ok, pollMs: 3_000_000_000 }, true],
     ["pollMs NaN", { ...ok, pollMs: Number.NaN }, true],
     ["limit 0", { ...ok, limit: 0 }, true],
     ["limit 1000", { ...ok, limit: 1000 }, true],
