@@ -2,6 +2,16 @@
 
 All notable changes to this package are listed here.
 
+## Unreleased
+
+Breaking for the Worker and for library users who set their own auth. The SDK, the CLI, the MCP server and the HTTP routes keep their shape.
+
+- The Worker authenticates with `requirePrincipal` from `agentic-identity/http`. The default `Auth` is `createStoreAuth` over the D1 store. The local bearer parsing is gone.
+- Each route checks one scope: `notify:read`, `notify:write`, `notify:admin` (erase) or `notify-send:write` (send). A bad key is 401. A good key without the scope is 403. A delegated agent never holds more than its person.
+- The Worker no longer reads `NOTIFY_TOKENS`. See "Migrating from `NOTIFY_TOKENS`" in the README.
+- `createApp` takes `auth` in place of `resolvePrincipal`. `createWorker` takes `auth` in place of `resolver`. `createStaticTokenResolver` is removed. `authorizeSend` receives the principal context and runs after the scope check.
+- `agentic-identity` is `^0.6.0`.
+
 ## 0.3.0
 
 Minor. Additive. No change to the SDK, the HTTP API, the CLI or the Worker.

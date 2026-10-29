@@ -1,7 +1,6 @@
 import { createApp, type AppOptions } from "./api.js";
-import { parseRegion } from "agentic-identity";
+import { createStoreAuth, parseRegion, type Auth, type Store } from "agentic-identity";
 import { createD1Store, D1_SCHEMA, type D1Like } from "agentic-identity/cloudflare";
-import { createStaticTokenResolver, type PrincipalResolver } from "./auth.js";
 import { NOTES } from "./core/gdpr.js";
 import { createNotifier } from "./core/service.js";
 import { VERSION } from "./version.js";
@@ -10,8 +9,6 @@ export interface WorkerEnv {
   NOTIFY_NAME?: string;
   /** D1 binding. */
   DB?: D1Like;
-  /** Secret. JSON map of bearer token (32 bytes or more) to principal. */
-  NOTIFY_TOKENS?: string;
   /** Data region of the store: "eu", "us" or "unknown". Default "eu". */
   NOTIFY_REGION?: string;
   /** Retention window in days. Unset keeps notifications. */
@@ -19,8 +16,11 @@ export interface WorkerEnv {
 }
 
 export interface WorkerConfig {
-  /** Build the principal resolver from the environment. Null means not configured. */
-  resolver(env: WorkerEnv): Promise<PrincipalResolver | null>;
+  /**
+   * Build the `Auth` port. Default: `createStoreAuth` over the same store, so keys that
+   * agentic-identity issues into the database work here. Each route checks a scope.
+   */
+  auth?(env: WorkerEnv, store: Store): Auth;
   authorizeSend?: AppOptions["authorizeSend"];
 }
 
@@ -35,7 +35,7 @@ async function hasLegacyRows(db: D1Like): Promise<boolean> {
   return (await db.prepare("SELECT 1 AS found FROM notify_docs LIMIT 1").bind().first()) !== null;
 }
 
-/** Compose the Worker. Bring your own identity system through `resolver`. */
+/** Compose the Worker. Bring your own identity system through `auth`. */
 export function createWorker(config: WorkerConfig) {
   const apps = new WeakMap<object, Promise<ReturnType<typeof createApp> | null>>();
 
@@ -48,17 +48,18 @@ export function createWorker(config: WorkerConfig) {
     const store = createD1Store(env.DB, { region: parseRegion(env.NOTIFY_REGION ?? "eu") });
     // One read now, so a bad region or an unreachable database refuses every call as not configured.
     await store.query(NOTES, { limit: 1 });
-    return createNotifier({
+    const notifier = createNotifier({
       store,
       retentionMs: days === undefined ? undefined : days * 86_400_000,
     });
+    return { notifier, store };
   }
 
   async function build(env: WorkerEnv) {
-    const resolvePrincipal = await config.resolver(env);
-    const notifier = resolvePrincipal ? await buildNotifier(env) : null;
-    if (!resolvePrincipal || !notifier) return null;
-    return createApp({ notifier, resolvePrincipal, authorizeSend: config.authorizeSend });
+    const built = await buildNotifier(env);
+    if (!built) return null;
+    const auth = config.auth ? config.auth(env, built.store) : createStoreAuth(built.store);
+    return createApp({ notifier: built.notifier, auth, authorizeSend: config.authorizeSend });
   }
 
   return {
@@ -83,14 +84,9 @@ export function createWorker(config: WorkerConfig) {
     },
     /** Delete notifications past the retention window. Wire to a cron trigger. */
     async scheduled(_event: unknown, env: WorkerEnv): Promise<void> {
-      await (await buildNotifier(env))?.sweep();
+      await (await buildNotifier(env))?.notifier.sweep();
     },
   };
 }
 
-export default createWorker({
-  async resolver(env) {
-    if (!env.NOTIFY_TOKENS) return null;
-    return createStaticTokenResolver(JSON.parse(env.NOTIFY_TOKENS) as never);
-  },
-});
+export default createWorker({});
