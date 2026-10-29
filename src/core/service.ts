@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { eraseRecipient, exportRecipient, NOTES, PREFS, sweepBefore } from "./gdpr.js";
 import type { Store } from "./store.js";
 import {
   DEFAULT_CHANNELS,
@@ -17,13 +18,13 @@ import {
   type SendInput,
 } from "./types.js";
 
-const NOTES = "notifications";
-const PREFS = "preferences";
 
 export interface NotifierOptions {
   store: Store;
   now?: () => number;
   newId?: () => string;
+  /** Notifications older than this many milliseconds go on `sweep`. Unset keeps them. */
+  retentionMs?: number;
 }
 
 export interface SendResult {
@@ -68,6 +69,9 @@ export function createNotifier(options: NotifierOptions) {
   const { store } = options;
   const now = options.now ?? (() => Date.now());
   const newId = options.newId ?? (() => crypto.randomUUID());
+  if (options.retentionMs !== undefined && !(Number.isInteger(options.retentionMs) && options.retentionMs > 0)) {
+    throw new RangeError("retentionMs must be a positive integer");
+  }
 
   async function getPreferences(recipient: Recipient): Promise<Preferences> {
     const r = recipientSchema.parse(recipient);
@@ -191,6 +195,22 @@ export function createNotifier(options: NotifierOptions) {
     };
   }
 
+  /** Export everything held about one recipient. */
+  async function exportData(recipient: Recipient) {
+    return exportRecipient(store, recipientSchema.parse(recipient));
+  }
+
+  /** Hard delete one recipient's notifications and preferences. */
+  async function erase(recipient: Recipient): Promise<{ notifications: number }> {
+    return { notifications: await eraseRecipient(store, recipientSchema.parse(recipient)) };
+  }
+
+  /** Delete notifications past the retention window. A no-op when no retention is set. */
+  async function sweep(): Promise<number> {
+    if (options.retentionMs === undefined) return 0;
+    return sweepBefore(store, now() - options.retentionMs);
+  }
+
   function parseType(type: string): string {
     return typeNameSchema.parse(type);
   }
@@ -206,6 +226,9 @@ export function createNotifier(options: NotifierOptions) {
     getPreferences,
     setPreferences,
     parseType,
+    exportData,
+    erase,
+    sweep,
   };
 }
 

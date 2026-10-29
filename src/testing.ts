@@ -82,6 +82,19 @@ export function storeContract(name: string, make: () => Promise<Store>, makePeer
       expect(await ids({ k: "none" })).toEqual([]);
     });
 
+    test("equality filters respect the value type", async () => {
+      const s = await make();
+      await s.put("c", "t", { f: true, o: { a: 1 } });
+      await s.put("c", "u", { f: 1, o: '{"a":1}' });
+      await s.put("c", "v", { f: "1", o: [1] });
+      const ids = async (where: Record<string, string | number | boolean | null>) =>
+        (await s.query("c", { where })).items.map((i) => i.id).sort();
+      expect(await ids({ f: true })).toEqual(["t"]);
+      expect(await ids({ f: 1 })).toEqual(["u"]);
+      expect(await ids({ f: "1" })).toEqual(["v"]);
+      expect(await ids({ o: '{"a":1}' })).toEqual(["u"]);
+    });
+
     test("query orders by one field and breaks ties by id", async () => {
       const s = await make();
       for (const [id, n] of [["b", 2], ["a", 2], ["c", 1], ["d", 3]] as const) await s.put("c", id, { n });
