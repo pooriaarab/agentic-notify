@@ -3,6 +3,8 @@ import { D1_SCHEMA } from "agentic-identity/cloudflare";
 import { Miniflare } from "miniflare";
 import { afterAll, beforeAll, describe, expect, test } from "vitest";
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
+import { StdioClientTransport } from "@modelcontextprotocol/sdk/client/stdio.js";
+import { join } from "node:path";
 import { InMemoryTransport } from "@modelcontextprotocol/sdk/inMemory.js";
 import { runCli } from "./cli.js";
 import { createMcpServer } from "./mcp.js";
@@ -243,6 +245,50 @@ describe("cli over the worker", () => {
     const noEnv = await runCli(["list"], { out: () => {}, err: () => {}, env: {} });
     expect(noEnv).toBe(2);
   });
+});
+
+describe("built mcp bin over stdio", () => {
+  test("unread_count, digest, export_data and erase_data act for the token's principal", async () => {
+    const open = async (token: string) => {
+      const mcp = new Client({ name: "t", version: "0" });
+      await mcp.connect(new StdioClientTransport({
+        command: process.execPath,
+        args: [join(process.cwd(), "dist", "mcp-bin.js")],
+        env: { PATH: process.env.PATH ?? "", NOTIFY_URL: url, NOTIFY_TOKEN: token },
+      }));
+      const call = async (name: string, args: Record<string, unknown> = {}) => {
+        const r = (await mcp.callTool({ name, arguments: args })) as { isError?: boolean; content: { text: string }[] };
+        return { isError: r.isError === true, data: JSON.parse(r.content[0]!.text) };
+      };
+      return { mcp, call };
+    };
+    const ana = await open(ANA);
+    const eve = await open(EVE);
+    try {
+      const names = (await ana.mcp.listTools()).tools.map((t) => t.name);
+      expect(names).toEqual(expect.arrayContaining(["unread_count", "digest", "export_data", "erase_data"]));
+      await as(BOT).send({ ...note("ana", "one"), type: "stdio_a" });
+      await as(BOT).send({ ...note("ana", "two"), type: "stdio_a" });
+      expect((await ana.call("unread_count")).data.count).toBe(2);
+      expect((await eve.call("unread_count")).data.count).toBe(0);
+      const digest = await ana.call("digest");
+      expect(digest.isError).toBe(false);
+      expect(JSON.stringify(digest.data)).toContain("stdio_a");
+      const exported = await ana.call("export_data");
+      expect(exported.isError).toBe(false);
+      expect(JSON.stringify(exported.data)).toContain("two");
+      expect(JSON.stringify((await eve.call("export_data")).data)).not.toContain("two");
+      // erase needs an explicit confirm
+      const refused = (await ana.mcp.callTool({ name: "erase_data", arguments: {} })) as { isError?: boolean };
+      expect(refused.isError).toBe(true);
+      expect((await ana.call("unread_count")).data.count).toBe(2);
+      expect((await ana.call("erase_data", { confirm: true })).data.notifications).toBeGreaterThanOrEqual(2);
+      expect((await ana.call("unread_count")).data.count).toBe(0);
+    } finally {
+      await ana.mcp.close();
+      await eve.mcp.close();
+    }
+  }, 30_000);
 });
 
 describe("mcp over the worker", () => {
