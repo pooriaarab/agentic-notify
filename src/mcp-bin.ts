@@ -5,6 +5,7 @@ const HELP = `agentic-notify-mcp ${VERSION}
 Usage: agentic-notify-mcp [mcp] [--help | -h | --version | -V]
 
 Runs the MCP server on stdio. An MCP client starts it.
+After mcp, -v also prints the version.
 `;
 
 // The `mcp` word may come first, as the package CLI takes it: `agentic-notify-mcp mcp --help`.
