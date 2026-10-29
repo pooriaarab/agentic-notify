@@ -27,8 +27,10 @@ export interface NotifierOptions {
 }
 
 export interface SendResult {
-  /** Null when the inbox channel is off or the recipient muted the type. */
+  /** Null only when the recipient muted the type. */
   notification: Notification | null;
+  /** True when the notification went to the inbox. */
+  stored: boolean;
   /** Channels the delivery layer must serve. Empty when muted. */
   channels: Channel[];
   muted: boolean;
@@ -84,11 +86,10 @@ export function createNotifier(options: NotifierOptions) {
     const valid = sendInputSchema.parse(input);
     const prefs = await getPreferences(valid.recipient);
     if (prefs.muted || prefs.mutedTypes.includes(valid.type)) {
-      return { notification: null, channels: [], muted: true };
+      return { notification: null, stored: false, channels: [], muted: true };
     }
     const own = Object.hasOwn(prefs.channels, valid.type) ? prefs.channels[valid.type] : undefined;
     const channels = [...(own ?? DEFAULT_CHANNELS)];
-    if (!channels.includes("inbox")) return { notification: null, channels, muted: false };
     // Check the clock and id source too, so a bad value never reaches the store.
     const notification = notificationSchema.parse({
       ...valid,
@@ -96,10 +97,11 @@ export function createNotifier(options: NotifierOptions) {
       createdAt: now(),
       readAt: null,
     });
+    if (!channels.includes("inbox")) return { notification, stored: false, channels, muted: false };
     if (!(await store.create(NOTES, notification.id, toDoc(notification)))) {
       throw new Error("notification id collision");
     }
-    return { notification, channels, muted: false };
+    return { notification, stored: true, channels, muted: false };
   }
 
   async function list(recipient: Recipient, opts: ListOptions = {}): Promise<ListResult> {
@@ -127,15 +129,19 @@ export function createNotifier(options: NotifierOptions) {
     return fromDoc(await load(recipient, id));
   }
 
-  async function markRead(recipient: Recipient, id: string): Promise<Notification> {
+  async function markReadOnce(recipient: Recipient, id: string): Promise<{ notification: Notification; won: boolean }> {
     for (let attempt = 0; attempt < 5; attempt++) {
       const doc = await load(recipient, id);
       const n = fromDoc(doc);
-      if (n.readAt !== null) return n;
+      if (n.readAt !== null) return { notification: n, won: false };
       const next = notificationSchema.parse({ ...n, readAt: now() });
-      if (await store.replaceIf(NOTES, id, doc, toDoc(next))) return next;
+      if (await store.replaceIf(NOTES, id, doc, toDoc(next))) return { notification: next, won: true };
     }
     throw new Error("could not mark read: too much contention");
+  }
+
+  async function markRead(recipient: Recipient, id: string): Promise<Notification> {
+    return (await markReadOnce(recipient, id)).notification;
   }
 
   async function markAllRead(recipient: Recipient): Promise<number> {
@@ -143,10 +149,8 @@ export function createNotifier(options: NotifierOptions) {
     for (;;) {
       const page = await list(recipient, { unreadOnly: true, limit: 100 });
       let progress = 0;
-      for (const n of page.items) {
-        // markRead returns the stored doc, so a concurrent reader may have won. Count only our wins.
-        if (n.readAt === null && (await markRead(recipient, n.id)).readAt !== null) progress++;
-      }
+      // Count only our own wins, so two concurrent calls do not both claim an item.
+      for (const n of page.items) if ((await markReadOnce(recipient, n.id)).won) progress++;
       count += progress;
       // Stop on an empty pass, so a store that filters wrongly cannot loop forever.
       if (progress === 0) return count;

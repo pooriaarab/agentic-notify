@@ -44,6 +44,12 @@ export function storeContract(name: string, make: () => Promise<Store>, makePeer
       expect(await s.replaceIf("c", "missing", { v: 1 }, { v: 2 })).toBe(false);
     });
 
+    test("replaceIf equality ignores key order", async () => {
+      const s = await make();
+      await s.put("c", "a", { a: 1, b: { x: 1, y: 2 } });
+      expect(await s.replaceIf("c", "a", { b: { y: 2, x: 1 }, a: 1 }, { a: 2 })).toBe(true);
+    });
+
     test("only one of two racing replaceIf calls wins", async () => {
       const s = await make();
       const peer = makePeer ? await makePeer(s) : s;
