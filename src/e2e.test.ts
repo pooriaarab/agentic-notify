@@ -357,6 +357,18 @@ describe("built mcp bin over stdio", () => {
 });
 
 describe("mcp over the worker", () => {
+  test("tools/list advertises the input schemas that zod 4 emits", async () => {
+    const [a, b] = InMemoryTransport.createLinkedPair();
+    await createMcpServer(as(ANA)).connect(a);
+    const mcp = new Client({ name: "t", version: "0" });
+    await mcp.connect(b);
+    const schemas = Object.fromEntries((await mcp.listTools()).tools.map((t) => [t.name, t.inputSchema]));
+    // Pins the advertised contract. zod 4 drops additionalProperties: false, so any change here must be deliberate.
+    expect(schemas.mark_read).toEqual({ type: "object", properties: { id: { type: "string" } }, required: ["id"], $schema: expect.any(String) });
+    expect(schemas.list_notifications?.properties?.limit).toEqual({ type: "integer", minimum: 1, maximum: 200 });
+    await mcp.close();
+  });
+
   test("lists tools and runs send, list, mark_read, preferences", async () => {
     const [a, b] = InMemoryTransport.createLinkedPair();
     await createMcpServer(as(ANA)).connect(a);
