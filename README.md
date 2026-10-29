@@ -184,7 +184,7 @@ npm ci
 npm run ci:local
 ```
 
-`ci:local` also runs the browser tests (`npm run test:ui`). Install the browser once with `npx playwright install chromium`.
+`npm test` skips the `./ui` export check until you run `npm run build`. `ci:local` builds first and also runs the browser tests (`npm run test:ui`). Install the browser once with `npx playwright install chromium`.
 
 ## License
 

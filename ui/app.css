@@ -36,9 +36,11 @@
   color: var(--agd-color-text);
   font-family: var(--agd-font-family-sans);
 }
-/* The panel is a container that takes focus when it opens. The controls inside show their own focus ring. */
+/* The panel and the inbox are containers that take focus. The panel shows a ring for keyboard use, the controls inside show their own. */
 .agd-notify__panel[data-align="start"] { right: auto; left: 0; }
 .agd-notify__panel:focus { outline: none; }
+.agd-notify__panel:focus-visible { outline: 2px solid var(--agd-color-focus); outline-offset: -2px; }
+.agd-notify__inbox:focus { outline: none; }
 /* On a phone the panel spans the screen under the top bar, so it never runs off the edge. */
 @media (max-width: 30rem) {
   .agd-notify { position: static; }

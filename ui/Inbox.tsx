@@ -1,4 +1,4 @@
-import { useEffect, useId, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import { BotIcon, Button } from "agentic-design/react";
 import type { Notification } from "../src/core/types.js";
 import type { NotificationsState } from "./useNotifications.js";
@@ -73,6 +73,7 @@ function Item({ n, busy, now, onRead }: { n: Notification; busy: boolean; now: n
 /** The list, the header actions, and the empty and error states. The bell puts this in a popover. */
 export function Inbox({ state, headingId }: { state: NotificationsState; headingId?: string }) {
   const ownId = useId();
+  const box = useRef<HTMLDivElement>(null);
   // The times move on while the popover stays open.
   const [now, setNow] = useState(Date.now());
   useEffect(() => {
@@ -81,8 +82,12 @@ export function Inbox({ state, headingId }: { state: NotificationsState; heading
   }, []);
   headingId ??= ownId;
   const { items, unread, loading, error, actionError, busy, markRead, markAllRead } = state;
+  // After a mark call the focused control can vanish. Keep focus in the inbox, so Tab and Escape still work.
+  useEffect(() => {
+    if (document.activeElement === document.body) box.current?.focus();
+  }, [items, busy]);
   return (
-    <div className="agd-notify__inbox">
+    <div ref={box} className="agd-notify__inbox" tabIndex={-1}>
       <div className="agd-notify__head">
         <h2 id={headingId} className="agd-notify__title">
           Notifications
@@ -101,7 +106,10 @@ export function Inbox({ state, headingId }: { state: NotificationsState; heading
       )}
       {actionError && (
         <p role="alert" className="agd-notify__error">
-          {actionError}
+          {actionError}{" "}
+          <button type="button" className="agd-notify__retry" onClick={state.dismissError}>
+            Dismiss
+          </button>
         </p>
       )}
       {loading ? (

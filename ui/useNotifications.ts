@@ -28,6 +28,8 @@ export interface NotificationsState {
   /** True while a mark call runs. */
   busy: boolean;
   refresh(): Promise<void>;
+  /** Hide the failed-mark message. */
+  dismissError(): void;
   markRead(id: string): Promise<void>;
   markAllRead(): Promise<void>;
 }
@@ -56,6 +58,7 @@ export function checkOptions(options: NotifyUiOptions): void {
  * The inbox of the signed-in caller, kept fresh over the notify HTTP API. It reads the list and the
  * unread count on mount, on every poll while the page is visible, and when the page becomes visible.
  * A refused call sets `error`. It never shows a failed call as success.
+ * It does not reload when `getToken` changes. When the caller changes, remount the host with a new `key`.
  */
 export function useNotifications(options: NotifyUiOptions): NotificationsState {
   checkOptions(options);
@@ -150,5 +153,7 @@ export function useNotifications(options: NotifyUiOptions): NotificationsState {
     };
   }, [refresh, pollMs]);
 
-  return { items, unread, loading, error, actionError, busy, refresh, markRead, markAllRead };
+  const dismissError = useCallback(() => setActionError(null), []);
+
+  return { items, unread, loading, error, actionError, busy, dismissError, refresh, markRead, markAllRead };
 }
