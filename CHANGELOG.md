@@ -2,10 +2,11 @@
 
 All notable changes to this package are listed here.
 
-## Unreleased
+## 0.4.0
 
 Breaking for the Worker and for library users who set their own auth. The SDK, the CLI, the MCP server and the HTTP routes keep their shape.
 
+- Before you deploy, follow "Migrating from `NOTIFY_TOKENS`" in the README. Until a caller has a key with the right scope, the Worker answers 401 or 403 for it.
 - The Worker authenticates with `requirePrincipal` from `agentic-identity/http`. The default `Auth` is `createStoreAuth` over the D1 store. The local bearer parsing is gone.
 - Each route checks one scope: `notify:read`, `notify:write`, `notify:admin` (erase) or `notify-send:write` (send). A bad key is 401. A good key without the scope is 403. A delegated agent never holds more than its person.
 - Erase (`DELETE /me`) now needs `notify:admin`. Before, every token could erase its own data. Send needs `notify-send:write`, which covers no read scope.

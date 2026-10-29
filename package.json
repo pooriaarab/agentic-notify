@@ -1,6 +1,6 @@
 {
   "name": "agentic-notify",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "description": "Notifications for humans and agents: in-app inbox, webhook and email delivery, with SDK, CLI, MCP server and Worker API.",
   "keywords": [
     "notifications",
