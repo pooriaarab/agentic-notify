@@ -10,12 +10,13 @@ export interface RecipientExport {
   notifications: Notification[];
 }
 
-async function* notificationDocs(store: Store, recipient: Recipient) {
+async function* notificationDocs(store: Store, recipient: Recipient, ordered = true) {
   let cursor: string | undefined;
   do {
     const page = await store.query(NOTES, {
       where: { recipientKey: recipientKey(recipient) },
-      orderBy: { field: "createdAt", direction: "asc" },
+      // Erase needs no order. Paging by id keeps it working when a doc has a bad createdAt.
+      ...(ordered ? { orderBy: { field: "createdAt", direction: "asc" as const } } : {}),
       limit: 200,
       cursor,
     });
@@ -43,9 +44,11 @@ export async function exportRecipient(store: Store, recipient: Recipient): Promi
  */
 export async function eraseRecipient(store: Store, recipient: Recipient): Promise<number> {
   let removed = 0;
-  for (;;) {
+  for (let pass = 0; ; pass++) {
+    // A broken adapter whose delete does nothing would loop forever. Fail instead.
+    if (pass >= 20) throw new Error("erase did not finish: deletes had no effect");
     const ids: string[] = [];
-    for await (const item of notificationDocs(store, recipient)) ids.push(item.id);
+    for await (const item of notificationDocs(store, recipient, false)) ids.push(item.id);
     if (ids.length === 0) break;
     for (const id of ids) await store.delete(NOTES, id);
     removed += ids.length;
@@ -57,26 +60,20 @@ export async function eraseRecipient(store: Store, recipient: Recipient): Promis
 /**
  * Delete notifications created before `cutoff`, for every recipient. Returns the count.
  * A doc whose createdAt is not a number is left alone: retention does not guess.
+ * If bad docs fill a whole page and block the sweep, it throws instead of reporting success.
  */
 export async function sweepBefore(store: Store, cutoff: number): Promise<number> {
   if (!Number.isFinite(cutoff)) throw new RangeError("cutoff must be a finite number");
+  const limit = 200;
   let removed = 0;
-  let cursor: string | undefined;
   for (;;) {
-    // Oldest first: stop at the first page that reaches a young doc.
-    let page;
-    try {
-      page = await store.query(NOTES, { orderBy: { field: "createdAt", direction: "asc" }, limit: 200, cursor });
-    } catch (error) {
-      // Mixed types in createdAt make a cursor unusable. Stop and keep what we have.
-      if (error instanceof RangeError && cursor !== undefined) return removed;
-      throw error;
-    }
+    // Oldest first. Each pass starts again at the front, so no cursor ever sits on a mixed-type field.
+    const page = await store.query(NOTES, { orderBy: { field: "createdAt", direction: "asc" }, limit });
     const old = page.items.filter((i) => typeof i.doc.createdAt === "number" && i.doc.createdAt < cutoff);
     for (const item of old) await store.delete(NOTES, item.id);
     removed += old.length;
-    const reachedYoung = page.items.some((i) => typeof i.doc.createdAt === "number" && i.doc.createdAt >= cutoff);
-    if (reachedYoung || page.nextCursor === null) return removed;
-    cursor = page.nextCursor;
+    if (old.length > 0) continue;
+    if (page.items.length < limit || page.items.some((i) => typeof i.doc.createdAt === "number")) return removed;
+    throw new Error("retention sweep blocked: a full page of notifications has no usable createdAt");
   }
 }

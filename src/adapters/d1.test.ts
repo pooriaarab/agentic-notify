@@ -51,4 +51,17 @@ describe("notifier on d1", () => {
     expect(await notifier.erase(ana)).toEqual({ notifications: 1 });
     expect((await notifier.list(ana)).items).toEqual([]);
   });
+
+  test("erase works on d1 when one doc has a bad createdAt", async () => {
+    await db.prepare("DELETE FROM notify_docs").bind().run();
+    const store = new D1Store(db);
+    const notifier = createNotifier({ store });
+    const ana = { kind: "human", id: "ana" } as const;
+    for (let i = 0; i < 205; i++) {
+      await store.put("notifications", `n${i}`, { id: `n${i}`, recipientKey: "human:ana", createdAt: i });
+    }
+    await store.put("notifications", "bad", { id: "bad", recipientKey: "human:ana", createdAt: "x" });
+    expect((await notifier.erase(ana)).notifications).toBe(206);
+    expect((await store.query("notifications", { where: { recipientKey: "human:ana" } })).items).toEqual([]);
+  });
 });

@@ -45,6 +45,15 @@ describe("export and erase", () => {
     expect(await notifier.erase(ana)).toEqual({ notifications: 0 });
   });
 
+  test("erase still works when a doc has a bad createdAt, and fails loudly on a store whose delete does nothing", async () => {
+    const store = new MemoryStore();
+    await store.put("notifications", "bad", { id: "bad", recipientKey: "human:ana", createdAt: "x" });
+    expect((await createNotifier({ store }).erase(ana)).notifications).toBe(1);
+    await store.put("notifications", "stuck", { id: "stuck", recipientKey: "human:ana", createdAt: 1 });
+    store.delete = async () => {};
+    await expect(createNotifier({ store }).erase(ana)).rejects.toThrow(/did not finish/);
+  });
+
   test("erase catches a notification that arrives during the delete", async () => {
     const store = new MemoryStore();
     const notifier = createNotifier({ store });
@@ -87,6 +96,24 @@ describe("retention", () => {
     expect((await notifier.list(ana)).items.map((n) => n.body)).toEqual(["new", "mid"]);
     expect((await notifier.list(bob)).items).toEqual([]);
     expect(await notifier.sweep()).toBe(0);
+  });
+
+  test("a bad doc does not stop the sweep of more than a page of expired ones", async () => {
+    const store = new MemoryStore();
+    let t = 1000;
+    const notifier = createNotifier({ store, now: () => t, retentionMs: 10 });
+    for (let i = 0; i < 450; i++) await notifier.send(input(ana));
+    await store.put("notifications", "bad", { id: "bad", recipientKey: "human:ana", createdAt: "x" });
+    t = 5000;
+    expect(await notifier.sweep()).toBe(450);
+    expect(await store.get("notifications", "bad")).not.toBeNull();
+  });
+
+  test("a full page of bad docs makes the sweep throw, not succeed", async () => {
+    const store = new MemoryStore();
+    for (let i = 0; i < 200; i++) await store.put("notifications", `bad${i}`, { id: `bad${i}`, createdAt: "x" });
+    const notifier = createNotifier({ store, now: () => 5000, retentionMs: 10 });
+    await expect(notifier.sweep()).rejects.toThrow(/blocked/);
   });
 
   test("sweep spans pages", async () => {

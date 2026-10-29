@@ -44,9 +44,15 @@ const TYPES: Record<string, string[]> = {
   boolean: ["true", "false"],
 };
 
-/** Create the table. Safe to run on every start. */
+// Indexes for the inbox list (by recipient, newest first) and the retention sweep (oldest first).
+const INDEXES = [
+  `CREATE INDEX IF NOT EXISTS notify_by_recipient ON notify_docs (collection, json_extract(doc, '$.recipientKey'), json_extract(doc, '$.createdAt'), id)`,
+  `CREATE INDEX IF NOT EXISTS notify_by_created ON notify_docs (collection, json_extract(doc, '$.createdAt'), id)`,
+];
+
+/** Create the table and indexes. Safe to run on every start. */
 export async function migrateD1(db: D1Like): Promise<void> {
-  await db.prepare(SCHEMA).bind().run();
+  for (const sql of [SCHEMA, ...INDEXES]) await db.prepare(sql).bind().run();
 }
 
 /** Store adapter for Cloudflare D1. Run `migrateD1` once first. */
