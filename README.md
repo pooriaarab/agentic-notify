@@ -5,11 +5,13 @@
 
 Notifications for humans and agents: in-app inbox, email and webhook delivery, with a CLI, API, MCP server and SDK.
 
-**Status: 0.4.2.** Breaking for Worker auth, see "Migrating from `NOTIFY_TOKENS`" below. Breaking for 0.1.0 code and databases, see the CHANGELOG upgrade steps. Works today: the notification model, preferences and mute, digest, a store port from agentic-identity with its memory and D1 adapters, signed webhook and email delivery through a dispatcher, an HTTP API in a Worker, an SDK, a CLI, MCP tools, per-recipient export and erase, and a retention sweep. Not done: a real email provider adapter, webhook endpoint management, and a web UI.
+**Status: 0.5.0.** Breaking for Worker auth, see "Migrating from `NOTIFY_TOKENS`" below. Breaking for 0.1.0 code and databases, see the CHANGELOG upgrade steps. Works today: the notification model, preferences and mute, digest, a store port from agentic-identity with its memory and D1 adapters, signed webhook and email delivery through a dispatcher, an HTTP API in a Worker, an SDK, a CLI, MCP tools, per-recipient export and erase, a retention sweep, and a React bell and inbox (`agentic-notify/ui`). Not done: a real email provider adapter, webhook endpoint management, and a full-page inbox app.
 
 ## Live demo
 
 A demo Worker runs at https://agentic-notify-demo.hello-fd1.workers.dev. `GET /health` answers 200. The `/api/v1` routes need a key, so without one they answer 401. The demo keeps its data in the EU and sweeps notifications after 7 days.
+
+The demo page is in `ui/` and the Worker serves it at `/ui/` after `npm run deploy:demo`. Sign in with a key that holds `notify:read` and `notify:write`. Add `notify-send:write` to use the send form.
 
 Redeploy your own copy with `wrangler.demo.jsonc` (create the D1 database with `--location weur`, put its id in the file, then add principals and keys, see Identity):
 
@@ -122,6 +124,26 @@ Library users: `createWorker` takes `auth` in place of `resolver`. `authorizeSen
 - Logs hold ids, channel names and error names only. They never hold bodies or addresses.
 - Erase removes a recipient's own notifications and preferences. Notifications that name the person only as actor stay with their recipients.
 
+## Bell and inbox (React)
+
+`agentic-notify/ui` is a bell button with an unread count. It opens a popover with the inbox: the list, mark read, mark all read, and an empty state. It refreshes by itself over the HTTP API, so new notifications show without a reload. React 19 is a peer dependency. The package depends on `agentic-design` for the parts and the tokens.
+
+```tsx
+import { NotificationBell } from "agentic-notify/ui";
+import "agentic-design/styles.css";
+import "agentic-notify/ui.css";
+
+<NotificationBell baseUrl="https://notify.example.com" getToken={() => session.token} />;
+```
+
+- `getToken` runs before each request. Return the key of the signed-in person or agent. The server checks every call.
+- `pollMs` sets the refresh interval (default 15000, 0 turns it off). The page refreshes when the tab becomes visible. `limit` sets the list size (default 20).
+- A refused or failed call shows an alert in the popover. The list never shows a failed call as success.
+- Notifications from an agent carry the words "Sent by an agent".
+- `useNotifications(options)` gives the state and the actions without the markup. `Inbox` renders the list alone.
+- Without React, `mount(element, options)` renders the bell into an element and returns `update` and `unmount`.
+- It uses `agd-` classes only. Keyboard: Enter opens, Escape closes and returns focus. It passes an axe WCAG 2.2 AA scan in light and dark, and it fits a 390px screen.
+
 ## Testing
 
 `agentic-notify/testing` helps you test a store adapter and your own code.
@@ -152,6 +174,8 @@ runStoreContract((options) => createMemoryStore(options));
 npm ci
 npm run ci:local
 ```
+
+`ci:local` also runs the browser tests (`npm run test:ui`). Install the browser once with `npx playwright install chromium`.
 
 ## License
 

@@ -1,0 +1,9 @@
+body { margin: 0; background: var(--agd-color-bg); color: var(--agd-color-text); font-family: var(--agd-font-family-sans); }
+.demo-bar { display: flex; align-items: center; gap: var(--agd-space-3); height: var(--agd-size-topbar); padding: 0 var(--agd-space-4); border-bottom: 1px solid var(--agd-color-border); background: var(--agd-color-surface); }
+.demo-brand { margin-inline-end: auto; font-weight: var(--agd-font-weight-semibold); }
+.demo-main { max-width: 30rem; margin: var(--agd-space-8) auto; padding: 0 var(--agd-space-4); }
+.demo-card { display: grid; gap: var(--agd-space-4); padding: var(--agd-space-6); border: 1px solid var(--agd-color-border); border-radius: var(--agd-radius-lg); background: var(--agd-color-surface); }
+.demo-card h1, .demo-card h2 { margin: 0; font-size: var(--agd-font-size-xl); }
+.demo-card p { margin: 0; }
+.demo-muted { color: var(--agd-color-text-muted); }
+.demo-error { color: var(--agd-color-danger-text); }

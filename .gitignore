@@ -6,3 +6,6 @@ coverage/
 .env.local
 .DS_Store
 .wrangler/
+public/
+test-results/
+playwright-report/

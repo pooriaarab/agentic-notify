@@ -1,0 +1,65 @@
+/* The notification bell and inbox. Colors, spacing and type come from the design tokens. */
+.agd-notify { position: relative; display: inline-block; }
+.agd-notify__trigger { position: relative; display: inline-flex; }
+.agd-notify__count {
+  position: absolute;
+  top: 0;
+  right: 0;
+  min-width: 1.25rem;
+  height: 1.25rem;
+  padding: 0 var(--agd-space-1);
+  display: grid;
+  place-items: center;
+  border-radius: var(--agd-radius-full);
+  background: var(--agd-color-accent);
+  color: var(--agd-color-text-on-accent);
+  font-size: var(--agd-font-size-xs);
+  font-weight: var(--agd-font-weight-semibold);
+  line-height: 1;
+  pointer-events: none;
+  transform: translate(25%, -25%);
+}
+.agd-notify__panel {
+  position: absolute;
+  z-index: 20;
+  top: calc(100% + var(--agd-space-2));
+  right: 0;
+  width: min(26rem, calc(100vw - 2 * var(--agd-space-4)));
+  max-height: min(34rem, 80vh);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--agd-color-border);
+  border-radius: var(--agd-radius-lg);
+  background: var(--agd-color-surface-raised);
+  box-shadow: var(--agd-shadow-floating);
+  color: var(--agd-color-text);
+  font-family: var(--agd-font-family-sans);
+}
+/* The panel is a container that takes focus when it opens. The controls inside show their own focus ring. */
+.agd-notify__panel:focus { outline: none; }
+/* On a phone the panel spans the screen under the top bar, so it never runs off the edge. */
+@media (max-width: 30rem) {
+  .agd-notify { position: static; }
+  .agd-notify__panel { position: fixed; top: calc(var(--agd-size-topbar) + var(--agd-space-2)); right: var(--agd-space-4); left: var(--agd-space-4); width: auto; }
+}
+.agd-notify__inbox { display: flex; flex-direction: column; min-height: 0; }
+.agd-notify__head { display: flex; align-items: center; justify-content: space-between; gap: var(--agd-space-3); padding: var(--agd-space-3) var(--agd-space-4); border-bottom: 1px solid var(--agd-color-border); }
+.agd-notify__title { margin: 0; font-size: var(--agd-font-size-md); font-weight: var(--agd-font-weight-semibold); }
+.agd-notify__list { margin: 0; padding: 0; list-style: none; overflow-y: auto; }
+.agd-notify__item { display: grid; gap: var(--agd-space-2); padding: var(--agd-space-3) var(--agd-space-4); border-bottom: 1px solid var(--agd-color-border); border-inline-start: 3px solid transparent; }
+.agd-notify__item:last-child { border-bottom: 0; }
+.agd-notify__item[data-unread] { border-inline-start-color: var(--agd-color-accent); background: var(--agd-color-accent-subtle); }
+.agd-notify__body { margin: 0; overflow-wrap: anywhere; line-height: var(--agd-line-height-snug); }
+.agd-notify__item[data-unread] .agd-notify__body { font-weight: var(--agd-font-weight-semibold); }
+.agd-notify__meta { margin: var(--agd-space-1) 0 0; display: flex; flex-wrap: wrap; align-items: center; gap: var(--agd-space-2) var(--agd-space-3); color: var(--agd-color-text-muted); font-size: var(--agd-font-size-sm); }
+.agd-notify__agent { margin-top: var(--agd-space-2); display: flex; flex-wrap: wrap; align-items: center; gap: var(--agd-space-2); }
+.agd-notify__agent-mark { display: inline-flex; align-items: center; gap: var(--agd-space-1); padding: 0 var(--agd-space-2); border: 1px solid var(--agd-color-agent); border-radius: var(--agd-radius-sm); background: var(--agd-color-agent-subtle); color: var(--agd-color-agent-text); font-size: var(--agd-font-size-xs); font-weight: var(--agd-font-weight-semibold); line-height: 1.5rem; }
+.agd-notify__actor { color: var(--agd-color-text-muted); font-size: var(--agd-font-size-sm); overflow-wrap: anywhere; }
+.agd-notify__actions { display: flex; align-items: center; justify-content: flex-end; gap: var(--agd-space-3); }
+.agd-notify__link { color: var(--agd-color-accent-text); font-size: var(--agd-font-size-sm); font-weight: var(--agd-font-weight-medium); text-decoration: underline; text-underline-offset: 0.2em; }
+.agd-notify__link:focus-visible, .agd-notify__retry:focus-visible { outline: 2px solid var(--agd-color-focus); outline-offset: 2px; }
+.agd-notify__loading { margin: 0; padding: var(--agd-space-6) var(--agd-space-4); color: var(--agd-color-text-muted); text-align: center; }
+.agd-notify__error { margin: 0; padding: var(--agd-space-3) var(--agd-space-4); background: var(--agd-color-danger-subtle); color: var(--agd-color-danger-text); font-size: var(--agd-font-size-sm); }
+.agd-notify__retry { padding: 0; border: 0; background: none; color: inherit; font: inherit; font-weight: var(--agd-font-weight-semibold); text-decoration: underline; cursor: pointer; }
+@media (prefers-reduced-motion: reduce) { .agd-notify * { transition: none !important; animation: none !important; } }

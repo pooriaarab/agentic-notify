@@ -13,5 +13,6 @@
   "d1_databases": [
     { "binding": "DB", "database_name": "agentic-notify-demo", "database_id": "d325af69-7edd-44eb-98cf-aea0defc5d1e" }
   ],
+  "assets": { "directory": "./public" },
   "triggers": { "crons": ["17 3 * * *"] }
 }
