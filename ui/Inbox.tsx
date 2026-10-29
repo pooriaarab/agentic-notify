@@ -1,3 +1,4 @@
+import { useId } from "react";
 import { BotIcon, Button, EmptyState } from "agentic-design/react";
 import type { Notification } from "../src/core/types.js";
 import type { NotificationsState } from "./useNotifications.js";
@@ -67,7 +68,9 @@ function Item({ n, busy, onRead }: { n: Notification; busy: boolean; onRead(id: 
 }
 
 /** The list, the header actions, and the empty and error states. The bell puts this in a popover. */
-export function Inbox({ state, headingId }: { state: NotificationsState; headingId: string }) {
+export function Inbox({ state, headingId }: { state: NotificationsState; headingId?: string }) {
+  const ownId = useId();
+  headingId ??= ownId;
   const { items, unread, loading, error, actionError, busy, markRead, markAllRead } = state;
   return (
     <div className="agd-notify__inbox">

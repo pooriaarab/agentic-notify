@@ -1,4 +1,4 @@
-import { useEffect, type CSSProperties, useId, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, type CSSProperties, useId, useRef, useState } from "react";
 import { IconButton } from "agentic-design/react";
 import { Inbox } from "./Inbox.js";
 import { useNotifications, type NotifyUiOptions } from "./useNotifications.js";
@@ -30,10 +30,23 @@ export function NotificationBell(options: NotifyUiOptions & { /** Which edge of 
   useEffect(() => {
     if (open && document.activeElement === document.body) panel.current?.focus();
   }, [open, state.items, state.busy]);
-  // On a phone the popover is fixed under the bell, wherever the host put it.
-  useEffect(() => {
-    if (open) setTop((button.current?.getBoundingClientRect().bottom ?? 0) + 8);
+  // On a phone the popover is fixed under the bell, wherever the host put it. Follow the bell while it is open.
+  useLayoutEffect(() => {
+    if (!open) return;
+    const place = () => setTop((button.current?.getBoundingClientRect().bottom ?? 0) + 8);
+    place();
+    window.addEventListener("scroll", place, true);
+    window.addEventListener("resize", place);
+    return () => {
+      window.removeEventListener("scroll", place, true);
+      window.removeEventListener("resize", place);
+    };
   }, [open]);
+  // Say "no unread" only after there were some. A page load with nothing new stays quiet.
+  const hadUnread = useRef(false);
+  useEffect(() => {
+    hadUnread.current = unread > 0;
+  }, [unread]);
   const status = error ? (unread > 0 ? `${unread} unread, could not refresh` : "could not load") : unread > 0 ? `${unread} unread` : "";
 
   useEffect(() => {
@@ -83,7 +96,7 @@ export function NotificationBell(options: NotifyUiOptions & { /** Which edge of 
         )}
       </span>
       <span className="agd-sr-only" role="status">
-        {loading ? "" : error ? `Notifications ${status}` : unread > 0 ? `${unread} unread notifications` : "No unread notifications"}
+        {loading ? "" : error ? `Notifications ${status}` : unread > 0 ? `${unread} unread notifications` : hadUnread.current ? "No unread notifications" : ""}
       </span>
       {open && (
         <div ref={panel} id={panelId} className="agd-notify__panel" data-align={options.align ?? "end"} style={{ "--agd-notify-top": `${top}px` } as CSSProperties} role="dialog" aria-labelledby={headingId} tabIndex={-1}>

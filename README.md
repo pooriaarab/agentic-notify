@@ -145,7 +145,8 @@ import "agentic-notify/ui.css";
 - `pollMs` sets the refresh interval (default 15000, 0 turns it off). The page refreshes when the tab becomes visible. `limit` sets the list size (default 20).
 - A refused or failed call shows an alert in the popover. The list never shows a failed call as success.
 - Notifications from an agent carry the words "Sent by an agent".
-- `useNotifications(options)` gives the state and the actions without the markup. `Inbox` renders the list alone.
+- `useNotifications(options)` gives the state and the actions without the markup. `<Inbox state={...} />` renders the list alone from that state. `headingId` is optional.
+- Install `agentic-design` in your app too, so your bundler can resolve `agentic-design/styles.css`. Use one copy of it.
 - Without React, `mount(element, options)` renders the bell into an element and returns `update` and `unmount`.
 - It uses `agd-` classes only. Keyboard: Enter opens, Escape closes and returns focus. It passes an axe WCAG 2.2 AA scan in light and dark, and it fits a 390px screen.
 
