@@ -63,7 +63,7 @@ npx agentic-notify mcp      # tools: ping, list_notifications, read_notification
                             # export_data, erase_data, send_notification
 ```
 
-`npx agentic-notify mcp --help` prints the usage and exits 0. `npx agentic-notify mcp --version` prints the version and exits 0. Neither starts the server.
+`npx agentic-notify mcp --help` (or `-h`) prints the usage and exits 0. `npx agentic-notify mcp --version` (or `-V` or `-v`) prints the version and exits 0. Neither starts the server.
 
 The MCP server needs `NOTIFY_URL` and `NOTIFY_TOKEN`. Without them only `ping` works. `erase_data` needs `confirm: true` and a key with `notify:admin`. `send_notification` needs `notify-send:write`. A tool that lacks its scope reports 403.
 

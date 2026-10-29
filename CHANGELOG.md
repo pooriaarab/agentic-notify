@@ -6,11 +6,11 @@ All notable changes to this package are listed here.
 
 Patch. No API change.
 
-- The zod dependency is `^4.6.7`. Earlier versions can use a lot of memory on oversized constrained collections (GHSA-mrhx-c7xc-m3w5).
-- A bad cursor or a bad request body answers 400 again. Under zod 4 the error class moved, and Hono sent these errors to the 500 handler. The API now returns 400.
-- `agentic-identity` is `^0.7.0`. The lockfile follows.
-- `agentic-notify mcp --help` and `-h` print the usage. `agentic-notify mcp --version`, `-V` and `-v` print the version. The `agentic-notify-mcp` bin answers `--help`, `-h`, `--version` and `-V`. Each exits 0 and does not start the server. Before, `mcp --help` started the MCP server and waited on stdin.
-- The publish workflow runs one publish at a time per ref. A second run waits for the first. A running publish finishes.
+- The zod dependency is `^4.6.7` (#46). Earlier versions can use a lot of memory on oversized constrained collections (GHSA-mrhx-c7xc-m3w5).
+- Bad cursor and bad request body errors answer 400 under zod 4 (#46).
+- `agentic-identity` is `^0.7.0` (#42). The lockfile follows.
+- `agentic-notify mcp --help` and `-h` print the usage (#40). `agentic-notify mcp --version`, `-V` and `-v` print the version. The `agentic-notify-mcp` bin answers `--help`, `-h`, `--version` and `-V`. Each exits 0 and does not start the server. Before, `mcp --help` started the MCP server and waited on stdin.
+- The publish workflow runs one publish at a time per ref. A second run waits for the first. A running publish finishes (#44).
 
 ## 0.4.0
 

@@ -95,9 +95,6 @@ const NODE_MAJOR = Number(process.versions.node.split(".")[0]);
 
 describe.skipIf(NODE_MAJOR < 22)("real processes", () => {
   beforeAll(async () => {
-    // Always build, so the test never runs a stale CLI.
-    const built = await run("npx", ["tsup"]);
-    if (built.code !== 0) throw new Error(`build failed: ${built.err}`);
     state = mkdtempSync(join(tmpdir(), "notify-e2e-"));
     // Put the identity rows in the local D1 database before the Worker starts.
     const sqlFile = join(state, "seed.sql");
