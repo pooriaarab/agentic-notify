@@ -2,9 +2,9 @@
 
 Notifications for humans and agents: in-app inbox, email and webhook delivery.
 
-- SDK: import { VERSION } from "agentic-notify".
+- SDK: import { createClient } from "agentic-notify/sdk".
 - CLI: npx agentic-notify --help.
-- MCP: npx agentic-notify mcp, then call ping.
+- MCP: npx agentic-notify mcp, then call list_notifications.
 
 ## Docs
 

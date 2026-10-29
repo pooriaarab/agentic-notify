@@ -37,6 +37,12 @@ describe("signature", () => {
     expect(await verifySignature(SECRET, "{}", h, { now: 1000, toleranceSeconds: Number.NaN })).toBe(false);
   });
 
+  test("bad timing options are refused when the channel is made", () => {
+    for (const bad of [{ baseDelayMs: Number.NaN }, { baseDelayMs: -1 }, { maxDelayMs: Number.NaN }, { timeoutMs: -5 }, { timeoutMs: Number.NaN }]) {
+      expect(() => createWebhookChannel({ resolve: () => null, ...bad })).toThrow(RangeError);
+    }
+  });
+
   test("a missing, empty or short secret throws", async () => {
     for (const bad of [undefined, null, "", "short", "é".repeat(15), 42]) {
       await expect(signPayload(bad as never, "{}", 1)).rejects.toThrow(/32 bytes/);
@@ -110,7 +116,7 @@ describe("retry", () => {
 describe("targets", () => {
   test("no endpoint means no call", async () => {
     const h = harness([200], { resolve: () => null });
-    await h.channel.deliver(n);
+    expect(await h.channel.deliver(n)).toBe("skipped");
     expect(h.calls).toHaveLength(0);
   });
 

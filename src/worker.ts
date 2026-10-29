@@ -1,22 +1,80 @@
+import { createApp, type AppOptions } from "./api.js";
+import { D1Store, migrateD1, type D1Like } from "./adapters/d1.js";
+import { createStaticTokenResolver, type PrincipalResolver } from "./auth.js";
+import { createNotifier } from "./core/service.js";
 import { VERSION } from "./version.js";
 
 export interface WorkerEnv {
   NOTIFY_NAME?: string;
+  /** D1 binding. */
+  DB?: D1Like;
+  /** Secret. JSON map of bearer token (32 bytes or more) to principal. */
+  NOTIFY_TOKENS?: string;
+  /** Retention window in days. Unset keeps notifications. */
+  NOTIFY_RETENTION_DAYS?: string;
+}
+
+export interface WorkerConfig {
+  /** Build the principal resolver from the environment. Null means not configured. */
+  resolver(env: WorkerEnv): Promise<PrincipalResolver | null>;
+  authorizeSend?: AppOptions["authorizeSend"];
 }
 
 function json(value: unknown, status = 200): Response {
-  return new Response(JSON.stringify(value), {
-    status,
-    headers: { "content-type": "application/json" },
-  });
+  return new Response(JSON.stringify(value), { status, headers: { "content-type": "application/json" } });
 }
 
-export default {
-  async fetch(request: Request, env: WorkerEnv): Promise<Response> {
-    const url = new URL(request.url);
-    if ((request.method === "GET" || request.method === "HEAD") && url.pathname === "/health") {
-      return json({ ok: true, name: env.NOTIFY_NAME ?? "agentic-notify", version: VERSION });
-    }
-    return json({ error: "not found" }, 404);
+/** Compose the Worker. Bring your own identity system through `resolver`. */
+export function createWorker(config: WorkerConfig) {
+  const apps = new WeakMap<object, Promise<ReturnType<typeof createApp> | null>>();
+
+  async function buildNotifier(env: WorkerEnv) {
+    if (!env.DB) return null;
+    await migrateD1(env.DB);
+    const days = env.NOTIFY_RETENTION_DAYS === undefined ? undefined : Number(env.NOTIFY_RETENTION_DAYS);
+    return createNotifier({
+      store: new D1Store(env.DB),
+      retentionMs: days === undefined ? undefined : days * 86_400_000,
+    });
+  }
+
+  async function build(env: WorkerEnv) {
+    const resolvePrincipal = await config.resolver(env);
+    const notifier = resolvePrincipal ? await buildNotifier(env) : null;
+    if (!resolvePrincipal || !notifier) return null;
+    return createApp({ notifier, resolvePrincipal, authorizeSend: config.authorizeSend });
+  }
+
+  return {
+    async fetch(request: Request, env: WorkerEnv): Promise<Response> {
+      const url = new URL(request.url);
+      if ((request.method === "GET" || request.method === "HEAD") && url.pathname === "/health") {
+        return json({ ok: true, name: env.NOTIFY_NAME ?? "agentic-notify", version: VERSION });
+      }
+      if (!url.pathname.startsWith("/api/")) return json({ error: "not_found" }, 404);
+      let app: Awaited<ReturnType<typeof build>>;
+      try {
+        let p = apps.get(env);
+        if (!p) apps.set(env, (p = build(env)));
+        app = await p;
+      } catch {
+        apps.delete(env);
+        return json({ error: "not_configured" }, 503);
+      }
+      // Fail closed: with no database or no identity setup, the API refuses every call.
+      if (!app) return json({ error: "not_configured" }, 503);
+      return app.fetch(request);
+    },
+    /** Delete notifications past the retention window. Wire to a cron trigger. */
+    async scheduled(_event: unknown, env: WorkerEnv): Promise<void> {
+      await (await buildNotifier(env))?.sweep();
+    },
+  };
+}
+
+export default createWorker({
+  async resolver(env) {
+    if (!env.NOTIFY_TOKENS) return null;
+    return createStaticTokenResolver(JSON.parse(env.NOTIFY_TOKENS) as never);
   },
-};
+});

@@ -34,7 +34,7 @@ function setup(webhook: DeliveryChannel) {
 describe("dispatcher", () => {
   test("serves each channel the recipient chose", async () => {
     const hooks: string[] = [];
-    const { notifier, email, dispatcher } = setup({ deliver: async (n) => void hooks.push(n.id) });
+    const { notifier, email, dispatcher } = setup({ deliver: async (n) => (hooks.push(n.id), "sent") });
     await notifier.setPreferences(ana, { channels: { mention: ["inbox", "webhook", "email"] }, muted: false, mutedTypes: [] });
     const r = await dispatcher.notify(input());
     expect(r.deliveries).toEqual([{ channel: "webhook", ok: true }, { channel: "email", ok: true }]);
@@ -58,9 +58,29 @@ describe("dispatcher", () => {
     expect(logs).toHaveLength(1);
   });
 
+  test("a missing target or channel is reported as skipped, not as sent", async () => {
+    const notifier = createNotifier({ store: new MemoryStore() });
+    const none = createDispatcher({
+      notifier,
+      channels: { email: createEmailChannel({ port: new TestEmailAdapter(), resolveAddress: () => null }) },
+    });
+    await notifier.setPreferences(ana, { channels: { mention: ["inbox", "email", "webhook"] }, muted: false, mutedTypes: [] });
+    expect((await none.notify(input())).deliveries).toEqual([
+      { channel: "email", ok: false, skipped: "no_target" },
+      { channel: "webhook", ok: false, skipped: "no_channel" },
+    ]);
+  });
+
+  test("an address with control characters is refused", async () => {
+    const email = new TestEmailAdapter();
+    const ch = createEmailChannel({ port: email, resolveAddress: () => "a@b.c\r\nBcc: x@y.z" });
+    await expect(ch.deliver({ id: "x", recipient: ana, type: "share", resource: { kind: "doc", id: "1" }, actor: ana, body: "b", createdAt: 1, readAt: null })).rejects.toThrow();
+    expect(email.sent).toEqual([]);
+  });
+
   test("muted sends nothing anywhere", async () => {
     const hooks: string[] = [];
-    const { notifier, email, dispatcher } = setup({ deliver: async (n) => void hooks.push(n.id) });
+    const { notifier, email, dispatcher } = setup({ deliver: async (n) => (hooks.push(n.id), "sent") });
     await notifier.setPreferences(ana, { channels: { mention: ["webhook", "email"] }, muted: true, mutedTypes: [] });
     const r = await dispatcher.notify(input());
     expect(r).toMatchObject({ muted: true, notification: null, deliveries: [] });

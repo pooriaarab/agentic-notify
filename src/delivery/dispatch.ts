@@ -6,7 +6,8 @@ export interface DispatchResult {
   notification: Notification | null;
   stored: boolean;
   muted: boolean;
-  deliveries: { channel: Channel; ok: boolean; error?: string }[];
+  /** `skipped` means nothing was sent: the recipient has no target, or no channel is set up for it. */
+  deliveries: { channel: Channel; ok: boolean; error?: string; skipped?: "no_target" | "no_channel" }[];
 }
 
 export interface DispatcherOptions {
@@ -27,10 +28,13 @@ export function createDispatcher(options: DispatcherOptions) {
         for (const channel of sent.channels) {
           if (channel === "inbox") continue;
           const impl = options.channels[channel];
-          if (!impl) continue;
+          if (!impl) {
+            deliveries.push({ channel, ok: false, skipped: "no_channel" });
+            continue;
+          }
           try {
-            await impl.deliver(notification);
-            deliveries.push({ channel, ok: true });
+            const outcome = await impl.deliver(notification);
+            deliveries.push(outcome === "sent" ? { channel, ok: true } : { channel, ok: false, skipped: "no_target" });
           } catch (error) {
             const name = error instanceof Error ? error.name : "Error";
             deliveries.push({ channel, ok: false, error: name });

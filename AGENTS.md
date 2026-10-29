@@ -10,17 +10,22 @@ and the HTTP API, so each face returns the same shape.
 
 ## The faces
 
-- SDK: `import { VERSION } from "agentic-notify"`.
+- SDK: `import { createClient } from "agentic-notify/sdk"`.
 - CLI: `npx agentic-notify --help`.
 - MCP: `npx agentic-notify mcp`, then call a tool below.
 
 ## MCP tools
 
+Set NOTIFY_URL and NOTIFY_TOKEN. Without them only `ping` works.
+
 | Tool | Use it for |
 | --- | --- |
 | ping | Check that the server runs. |
-
-More tools (list, read, mark read, prefs, send) arrive with the core.
+| list_notifications | List yours, newest first. |
+| read_notification | Get one by id. |
+| mark_read / mark_all_read | Clear unread state. |
+| get_preferences / set_preferences | Channels per type, mute. |
+| send_notification | Notify someone. Needs the send right. |
 
 ## Rules
 

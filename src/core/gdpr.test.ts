@@ -116,6 +116,16 @@ describe("retention", () => {
     await expect(notifier.sweep()).rejects.toThrow(/blocked/);
   });
 
+  test("sweep fails on a store whose delete does nothing, and export fails loudly on a bad doc", async () => {
+    const store = new MemoryStore();
+    const notifier = createNotifier({ store, now: () => 5000, retentionMs: 10 });
+    await store.put("notifications", "old", { id: "old", recipientKey: "human:ana", createdAt: 1, type: "t", recipient: ana, resource: { kind: "d", id: "1" }, actor: ana, body: "b", readAt: null });
+    await store.put("notifications", "bad", { id: "bad", recipientKey: "human:ana", createdAt: "x" });
+    store.delete = async () => {};
+    await expect(notifier.sweep()).rejects.toThrow(/did not finish/);
+    await expect(notifier.exportData(ana)).rejects.toThrow();
+  });
+
   test("sweep spans pages", async () => {
     const { notifier, clock } = setup(10);
     for (let i = 0; i < 450; i++) await notifier.send(input(ana));
