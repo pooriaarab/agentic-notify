@@ -57,6 +57,11 @@ export async function exportRecipient(store: Store, recipient: Recipient): Promi
  * unless it lands after the final pass. Returns how many notifications went.
  */
 export async function eraseRecipient(store: Store, recipient: Recipient): Promise<number> {
+  return (await eraseRecipientCounts(store, recipient)).notifications;
+}
+
+/** The same erase, with the count of preferences rows that went (0 or 1). */
+export async function eraseRecipientCounts(store: Store, recipient: Recipient): Promise<{ notifications: number; preferences: number }> {
   let removed = 0;
   for (let pass = 0; ; pass++) {
     // A broken adapter whose delete does nothing would loop forever. Fail instead.
@@ -67,8 +72,14 @@ export async function eraseRecipient(store: Store, recipient: Recipient): Promis
     await deleteAll(store, ids);
     removed += ids.length;
   }
-  await store.delete(PREFS, recipientKey(recipient));
-  return removed;
+  const key = recipientKey(recipient);
+  // Read and delete in one transaction, so the count is the row that went.
+  const preferences = await store.transaction(async (tx) => {
+    const held = (await tx.get(PREFS, key)) ? 1 : 0;
+    await tx.delete(PREFS, key);
+    return held;
+  });
+  return { notifications: removed, preferences };
 }
 
 /**

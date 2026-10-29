@@ -2,6 +2,12 @@
 
 All notable changes to this package are listed here.
 
+## 0.5.0
+
+Minor. New subpath, no change to the SDK, CLI, MCP or HTTP shape.
+
+- `agentic-notify/account` exports `notifyAccount` with `exportAccount` and `eraseAccount`, so a host can export and erase a subject without reading the storage layout. The shape is provisional until `agentic-identity` ships the `AccountPackage` contract.
+
 ## 0.4.3
 
 Patch. No change to the SDK, CLI, MCP or HTTP shape.

@@ -5,7 +5,7 @@
 
 Notifications for humans and agents: in-app inbox, email and webhook delivery, with a CLI, API, MCP server and SDK.
 
-**Status: 0.4.3.** Breaking for Worker auth, see "Migrating from `NOTIFY_TOKENS`" below. Breaking for 0.1.0 code and databases, see the CHANGELOG upgrade steps. Works today: the notification model, preferences and mute, digest, a store port from agentic-identity with its memory and D1 adapters, signed webhook and email delivery through a dispatcher, an HTTP API in a Worker, an SDK, a CLI, MCP tools, per-recipient export and erase, and a retention sweep. Not done: a real email provider adapter, webhook endpoint management, and a web UI.
+**Status: 0.5.0.** Breaking for Worker auth, see "Migrating from `NOTIFY_TOKENS`" below. Breaking for 0.1.0 code and databases, see the CHANGELOG upgrade steps. Works today: the notification model, preferences and mute, digest, a store port from agentic-identity with its memory and D1 adapters, signed webhook and email delivery through a dispatcher, an HTTP API in a Worker, an SDK, a CLI, MCP tools, per-recipient export and erase, and a retention sweep. Not done: a real email provider adapter, webhook endpoint management, and a web UI.
 
 ## Live demo
 
@@ -121,6 +121,10 @@ Library users: `createWorker` takes `auth` in place of `resolver`. `authorizeSen
 - The Worker reads `NOTIFY_REGION` (`eu`, `us` or `unknown`, default `eu`). The D1 adapter refuses a database that does not report a serving region in that area. For local runs without a real D1, set `NOTIFY_REGION=unknown`.
 - Logs hold ids, channel names and error names only. They never hold bodies or addresses.
 - Erase removes a recipient's own notifications and preferences. Notifications that name the person only as actor stay with their recipients.
+
+## Account export and erase
+
+A host that runs account export and erase across many packages calls `notifyAccount` from `agentic-notify/account`. It has `exportAccount(subject, { notifier })` and `eraseAccount(subject, { notifier })`, so the host does not read the storage layout. The subject is an id and a kind. A person or a user token is a `human` recipient. Every agent kind is an `agent` recipient. The export has plain JSON in `notifications` and `preferences`. The erase removes both and returns counts. A repeat of the erase counts zero. Notifications that name the subject only as actor stay with their recipients. The shape is provisional: it is the `AccountPackage` contract that a later `agentic-identity` release adds to `agentic-identity/account`.
 
 ## Testing
 

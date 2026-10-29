@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { eraseRecipient, exportRecipient, NOTES, PREFS, sweepBefore } from "./gdpr.js";
+import { eraseRecipient, eraseRecipientCounts, exportRecipient, NOTES, PREFS, sweepBefore } from "./gdpr.js";
 import type { Doc, Store } from "agentic-identity";
 import {
   DEFAULT_CHANNELS,
@@ -237,6 +237,11 @@ export function createNotifier(options: NotifierOptions) {
     return { notifications: await eraseRecipient(store, recipientSchema.parse(recipient)) };
   }
 
+  /** Like `erase`, with the count of preferences rows that went. */
+  async function eraseWithCounts(recipient: Recipient): Promise<{ notifications: number; preferences: number }> {
+    return eraseRecipientCounts(store, recipientSchema.parse(recipient));
+  }
+
   /** Delete notifications past the retention window. A no-op when no retention is set. */
   async function sweep(): Promise<number> {
     if (options.retentionMs === undefined) return 0;
@@ -260,6 +265,7 @@ export function createNotifier(options: NotifierOptions) {
     parseType,
     exportData,
     erase,
+    eraseWithCounts,
     sweep,
   };
 }

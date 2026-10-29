@@ -9,6 +9,7 @@ export default defineConfig({
     "src/worker.ts",
     "src/sdk.ts",
     "src/testing.ts",
+    "src/account.ts",
   ],
   format: ["esm"],
   dts: true,

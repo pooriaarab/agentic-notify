@@ -29,3 +29,5 @@ export type { DeliveryChannel, Logger } from "./delivery/types.js";
 export { createD1Store, D1_SCHEMA } from "agentic-identity/cloudflare";
 export type { D1Like } from "agentic-identity/cloudflare";
 export type { RecipientExport } from "./core/gdpr.js";
+export { notifyAccount } from "./account.js";
+export type { NotifyAccount, NotifyAccountDeps, Subject as AccountSubject } from "./account.js";
