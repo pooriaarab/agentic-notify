@@ -8,6 +8,16 @@ import { NotFoundError, type Notifier } from "./core/service.js";
 import { preferencesSchema, resourceRefSchema, typeNameSchema, recipientSchema, type Recipient } from "./core/types.js";
 import type { createDispatcher } from "./delivery/dispatch.js";
 
+/**
+ * A 400 for caller input that a schema did not reject. In zod 4, `new ZodError()` is not an
+ * Error, so Hono would not pass it to onError. This class is an Error, so it reaches onError.
+ */
+class InputError extends Error {
+  constructor(readonly issues: { path: string[]; message: string }[]) {
+    super("invalid input");
+  }
+}
+
 export interface AppOptions {
   notifier: Notifier;
   /** When set, sends also go to webhook and email channels. */
@@ -47,7 +57,7 @@ export function createApp(options: AppOptions) {
     try {
       return await c.req.json();
     } catch {
-      throw new ZodError([{ code: "custom", path: [], message: "body must be JSON" }]);
+      throw new InputError([{ path: [], message: "body must be JSON" }]);
     }
   }
 
@@ -58,7 +68,7 @@ export function createApp(options: AppOptions) {
       return c.json(await notifier.list(c.var.me, { unreadOnly: q.unread === "1" || q.unread === "true", limit, cursor: q.cursor }));
     } catch (error) {
       // The store throws RangeError for a cursor it cannot read. That is caller input.
-      if (error instanceof RangeError) throw new ZodError([{ code: "custom", path: ["cursor"], message: "bad cursor" }]);
+      if (error instanceof RangeError) throw new InputError([{ path: ["cursor"], message: "bad cursor" }]);
       throw error;
     }
   });
@@ -99,7 +109,7 @@ export function createApp(options: AppOptions) {
   app.notFound((c) => c.json({ error: "not_found" }, 404));
   app.onError((error, c) => {
     if (error instanceof NotFoundError) return c.json({ error: "not_found" }, 404);
-    if (error instanceof ZodError) {
+    if (error instanceof ZodError || error instanceof InputError) {
       return c.json({ error: "invalid_request", issues: error.issues.map((i) => ({ path: i.path.join("."), message: i.message })) }, 400);
     }
     // Never log content or ids. The error name is enough.
