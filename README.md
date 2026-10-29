@@ -5,7 +5,7 @@
 
 Notifications for humans and agents: in-app inbox, email and webhook delivery, with a CLI, API, MCP server and SDK.
 
-**Status: 0.0.0, in progress.** The core works in memory: send, list, read, preferences, mute and digest, behind a Store port. Signed webhook and email delivery work too, through a dispatcher. The D1 adapter, Worker API, CLI and MCP tools land in the next pull requests.
+**Status: 0.0.0, in progress.** The core works in memory: send, list, read, preferences, mute and digest, behind a Store port. Signed webhook and email delivery work too, through a dispatcher. The D1 adapter, per-recipient export and erase, and a retention sweep work too. The Worker API, CLI and MCP tools land in the next pull request.
 
 ## Install
 
@@ -40,7 +40,6 @@ Adapters pass the Store contract suite from `agentic-notify/testing`.
 
 ## Planned
 
-- Store adapter for D1.
 - SDK, HTTP API in a Worker, CLI, MCP server.
 - GDPR export and erase, retention, no personal data in logs.
 

@@ -1,4 +1,5 @@
 import {
+  canonicalJson,
   clampLimit,
   decodeCursor,
   encodeCursor,
@@ -63,14 +64,14 @@ export class D1Store implements Store {
   async put(collection: string, id: string, doc: Doc): Promise<void> {
     await this.db
       .prepare("INSERT OR REPLACE INTO notify_docs (collection, id, doc) VALUES (?, ?, ?)")
-      .bind(collection, id, JSON.stringify(doc))
+      .bind(collection, id, canonicalJson(doc))
       .run();
   }
 
   async create(collection: string, id: string, doc: Doc): Promise<boolean> {
     const res = await this.db
       .prepare("INSERT OR IGNORE INTO notify_docs (collection, id, doc) VALUES (?, ?, ?)")
-      .bind(collection, id, JSON.stringify(doc))
+      .bind(collection, id, canonicalJson(doc))
       .run();
     return (res.meta.changes ?? 0) > 0;
   }
@@ -78,7 +79,7 @@ export class D1Store implements Store {
   async replaceIf(collection: string, id: string, expected: Doc, next: Doc): Promise<boolean> {
     const res = await this.db
       .prepare("UPDATE notify_docs SET doc = ? WHERE collection = ? AND id = ? AND doc = ?")
-      .bind(JSON.stringify(next), collection, id, JSON.stringify(expected))
+      .bind(canonicalJson(next), collection, id, canonicalJson(expected))
       .run();
     return (res.meta.changes ?? 0) > 0;
   }
