@@ -11,7 +11,7 @@ Breaking for the Worker and for library users who set their own auth. The SDK, t
 - Each route checks one scope: `notify:read`, `notify:write`, `notify:admin` (erase) or `notify-send:write` (send). A bad key is 401. A good key without the scope is 403. A delegated agent never holds more than its person.
 - Erase (`DELETE /me`) now needs `notify:admin`. Before, every token could erase its own data. Send needs `notify-send:write`, which covers no read scope.
 - The Worker no longer reads `NOTIFY_TOKENS`. See "Migrating from `NOTIFY_TOKENS`" in the README.
-- `createApp` takes `auth` in place of `resolvePrincipal`. `createWorker` takes `auth` in place of `resolver`. `createStaticTokenResolver` and the `PrincipalResolver` type are removed. `authorizeSend` receives the principal context and runs after the scope check.
+- `createWorker` takes `auth` in place of `resolver`. `authorizeSend` receives the principal context and runs after the scope check.
 - The default `authorizeSend` changed. It was "only principals with `canSend: true`". Now, with no `authorizeSend`, every caller that holds `notify-send:write` may send. Pass your own `authorizeSend` to keep a narrower rule.
 - `agentic-identity` is `^0.6.0`.
 

@@ -99,7 +99,7 @@ The Worker authenticates with `agentic-identity`. `requirePrincipal` from `agent
 
 A person, and a `user_token` of that person, use the inbox of the person. An agent (`agent`, `agent_of_human` or `agent_of_agent`) uses the inbox of its own id. A caller reads and changes only its own notifications.
 
-To use another identity system, call `createWorker({ auth: (env, store) => myAuth })`, where `auth` builds your own `Auth` from the Worker env and the store. Import `createWorker` from `agentic-notify/worker`. `createApp({ notifier, auth })` takes the `Auth` value itself.
+To use another identity system, call `createWorker({ auth: (env, store) => myAuth })`, where `auth` builds your own `Auth` from the Worker env and the store. Import `createWorker` from `agentic-notify/worker`.
 
 ### Migrating from `NOTIFY_TOKENS`
 
@@ -110,7 +110,7 @@ Before 0.4.0, the Worker read a static `NOTIFY_TOKENS` secret: a map of token to
 3. Give each principal scopes. An old token could read, change and erase its own inbox. To keep that, use `notify:admin`. For less, use `notify:write` (it covers `notify:read`) or `notify:read`. For the old `canSend: true`, add `notify-send:write`. It is a separate resource, so it does not cover `notify:read`: a caller that sends and reads needs both.
 4. Give the new key to the CLI, SDK and MCP server as `NOTIFY_TOKEN`.
 
-Library users: `createApp` takes `auth` in place of `resolvePrincipal`. `createWorker` takes `auth` in place of `resolver`. `createStaticTokenResolver` and `PrincipalResolver` are gone. `authorizeSend` still works as an extra check after the scope, and the default now allows (the scope decides).
+Library users: `createWorker` takes `auth` in place of `resolver`. `authorizeSend` still works as an extra check after the scope. Its default changed: it was "only `canSend: true`", and now every caller with `notify-send:write` may send unless you pass your own.
 
 ## Privacy
 
