@@ -100,8 +100,9 @@ Auth is a port: `PrincipalResolver` turns a request into `{ kind: "human" | "age
 `agentic-notify/testing` helps you test a store adapter and your own code.
 
 `runStoreContract(make)` runs the store contract suite. Call it at the top level of a vitest test
-file, and install `vitest` 3 or later. The factory makes a new store for each call. It must pass
-`options` to the store, so that stores made with the same `shared` value see the same data:
+file, and install `vitest` 3 or later. The factory makes a new store for each call. A store made
+without `shared` must start empty. Stores made with the same `shared` value must see the same data.
+So the factory passes `options` to the store:
 
 ```ts
 import { createMemoryStore } from "agentic-notify";
