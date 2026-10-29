@@ -110,7 +110,7 @@ Before 0.4.0, the Worker read a static `NOTIFY_TOKENS` secret: a map of token to
 3. Give each principal scopes. An old token could read, change and erase its own inbox. To keep that, use `notify:admin`. For less, use `notify:write` (it covers `notify:read`) or `notify:read`. For the old `canSend: true`, add `notify-send:write`. It is a separate resource, so it does not cover `notify:read`: a caller that sends and reads needs both.
 4. Give the new key to the CLI, SDK and MCP server as `NOTIFY_TOKEN`.
 
-Library users: `createWorker` takes `auth` in place of `resolver`. `authorizeSend` still works as an extra check after the scope. Its default changed: it was "only `canSend: true`", and now every caller with `notify-send:write` may send unless you pass your own.
+Library users: `createWorker` takes `auth` in place of `resolver`. `authorizeSend` still works as an extra check after the scope. Its first argument is now a `PrincipalContext` (`principalId` in place of `id`, no `canSend`). Its default changed: it was "only `canSend: true`", and now every caller with `notify-send:write` may send unless you pass your own.
 
 ## Privacy
 
