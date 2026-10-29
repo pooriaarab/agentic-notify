@@ -2,6 +2,13 @@
 
 All notable changes to this package are listed here.
 
+## 0.2.1
+
+Patch. No API change.
+
+- The MCP bin answers `--help` and `-h` with usage text and exit 0. It answers `--version` and `-V` with the version. Before this, it ignored these flags and started a stdio server, so the command hung.
+- Running with no arguments still starts the MCP server.
+
 ## 0.2.0
 
 Breaking. The package now uses the `Store` port from `agentic-identity` (`^0.4.0`) and drops its own copy.
