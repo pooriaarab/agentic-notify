@@ -24,7 +24,7 @@ function setup() {
 describe("subject", () => {
   it("refuses a bad subject and missing deps", async () => {
     const { deps } = setup();
-    for (const bad of [{ id: "", kind: "human" }, { id: "ana" }, { id: "ana", kind: "wizard" }, null]) {
+    for (const bad of [{ id: "", kind: "human" }, { id: "ana" }, { id: "ana", kind: "wizard" }, { id: "a".repeat(201), kind: "human" }, null]) {
       await expect(notifyAccount.exportAccount(bad as never, deps)).rejects.toThrow(/subject/);
       await expect(notifyAccount.eraseAccount(bad as never, deps)).rejects.toThrow(/subject/);
     }
@@ -45,6 +45,12 @@ describe("exportAccount", () => {
     expect(out.preferences).toMatchObject([{ mutedTypes: ["x"] }]);
     expect(JSON.stringify(out)).not.toContain("to-bob");
     expect(JSON.parse(JSON.stringify(out))).toStrictEqual(out);
+  });
+
+  it("refuses to export when a stored doc is malformed, not partial data", async () => {
+    const store = createMemoryStore();
+    await store.put("notifications", "bad", { id: "bad", recipientKey: "human:ana", createdAt: "x" });
+    await expect(notifyAccount.exportAccount(ANA, { notifier: createNotifier({ store }) })).rejects.toThrow();
   });
 
   it("exports an empty account as empty collections", async () => {

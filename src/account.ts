@@ -4,7 +4,7 @@
 // of earlier releases is a different contract, and this does not fit it.
 import { PRINCIPAL_KINDS, type PrincipalKind } from "agentic-identity";
 import type { Notifier } from "./core/service.js";
-import type { Recipient } from "./core/types.js";
+import { recipientSchema, type Recipient } from "./core/types.js";
 
 export interface NotifyAccountDeps {
   notifier: Notifier;
@@ -32,10 +32,11 @@ const plain = (value: unknown): JsonRecord[] => JSON.parse(JSON.stringify(value)
 /** A person or a user token is a `human` recipient. Every agent kind is an `agent` recipient. */
 function recipientOf(subject: Subject): Recipient {
   const known = (PRINCIPAL_KINDS as readonly unknown[]).includes(subject?.kind);
-  if (typeof subject?.id !== "string" || subject.id.trim() === "" || !known) {
-    throw new TypeError("subject needs an id and a known kind");
-  }
-  return { kind: subject.kind === "human" || subject.kind === "user_token" ? "human" : "agent", id: subject.id };
+  const kind = subject?.kind === "human" || subject?.kind === "user_token" ? "human" : "agent";
+  const parsed = recipientSchema.safeParse({ kind, id: subject?.id });
+  // The same id rule as a recipient, so a too long id gives this error and not a schema error.
+  if (!known || !parsed.success || parsed.data.id.trim() === "") throw new TypeError("subject needs an id and a known kind");
+  return parsed.data;
 }
 
 function check(subject: Subject, deps: NotifyAccountDeps): Recipient {

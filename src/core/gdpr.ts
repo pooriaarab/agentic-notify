@@ -73,8 +73,12 @@ export async function eraseRecipientCounts(store: Store, recipient: Recipient): 
     removed += ids.length;
   }
   const key = recipientKey(recipient);
-  const preferences = (await store.get(PREFS, key)) ? 1 : 0;
-  await store.delete(PREFS, key);
+  // Read and delete in one transaction, so the count is the row that went.
+  const preferences = await store.transaction(async (tx) => {
+    const held = (await tx.get(PREFS, key)) ? 1 : 0;
+    await tx.delete(PREFS, key);
+    return held;
+  });
   return { notifications: removed, preferences };
 }
 
