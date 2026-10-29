@@ -1,4 +1,5 @@
 import { build } from "esbuild";
+import { D1_SCHEMA } from "agentic-identity/cloudflare";
 import { Miniflare } from "miniflare";
 import { afterAll, beforeAll, describe, expect, test } from "vitest";
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
@@ -169,25 +170,25 @@ describe("worker region", () => {
     return { mf: m, url: (await m.ready).toString() };
   }
 
-  test("a 0.1.0 table that still holds rows refuses every call, and an empty one does not", async () => {
+  test("a 0.1.0 table that still holds rows refuses every call until the rows are copied", async () => {
     const w = await workerWith("unknown");
     try {
       const db = await w.mf.getD1Database("DB");
       await db.exec("CREATE TABLE notify_docs (collection TEXT NOT NULL, id TEXT NOT NULL, doc TEXT NOT NULL, PRIMARY KEY (collection, id))");
+      const old = JSON.stringify({
+        id: "n1", type: "mention", recipient: { kind: "human", id: "ana" }, resource: { kind: "doc", id: "d1" },
+        actor: { kind: "agent", id: "helper" }, body: "old note", createdAt: 5, readAt: null, recipientKey: "human:ana",
+      });
+      await db.prepare("INSERT INTO notify_docs (collection, id, doc) VALUES ('notifications', 'n1', ?)").bind(old).run();
       const ask = () => fetch(`${w.url}api/v1/notifications`, { headers: { authorization: `Bearer ${ANA}` } });
-      expect((await ask()).status).toBe(200);
-      await db.exec("INSERT INTO notify_docs (collection, id, doc) VALUES ('notifications', 'n1', '{}')");
-      // The first build succeeded and is cached, so use a fresh worker over the same database.
-      const w2 = await workerWith("unknown");
-      try {
-        const db2 = await w2.mf.getD1Database("DB");
-        await db2.exec("CREATE TABLE notify_docs (collection TEXT NOT NULL, id TEXT NOT NULL, doc TEXT NOT NULL, PRIMARY KEY (collection, id))");
-        await db2.exec("INSERT INTO notify_docs (collection, id, doc) VALUES ('notifications', 'n1', '{}')");
-        const res = await fetch(`${w2.url}api/v1/notifications`, { headers: { authorization: `Bearer ${ANA}` } });
-        expect(res.status).toBe(503);
-      } finally {
-        await w2.mf.dispose();
-      }
+      expect((await ask()).status).toBe(503);
+      // The upgrade steps from the changelog.
+      await db.exec(D1_SCHEMA);
+      await db.exec("INSERT OR IGNORE INTO store_docs (collection, id, body, version) SELECT collection, id, doc, 1 FROM notify_docs");
+      await db.exec("DROP TABLE notify_docs");
+      const res = await ask();
+      expect(res.status).toBe(200);
+      expect(((await res.json()) as { items: { body: string }[] }).items.map((i) => i.body)).toEqual(["old note"]);
     } finally {
       await w.mf.dispose();
     }
