@@ -4,7 +4,7 @@ All notable changes to this package are listed here.
 
 ## 0.4.1
 
-Patch. No change to the SDK, CLI, MCP or HTTP shape.
+Patch. No change to the SDK, CLI or HTTP shape. The MCP tools advertise new input schemas.
 
 - The zod dependency is `^4.6.7` (#46). Earlier versions can use a lot of memory on oversized constrained collections (GHSA-mrhx-c7xc-m3w5).
 - Bad cursor and bad request body errors answer 400 under zod 4 (#46). The `issues[].message` text in those 400 bodies follows zod 4's wording. A client that matches on the text must update.
@@ -12,6 +12,8 @@ Patch. No change to the SDK, CLI, MCP or HTTP shape.
 - `agentic-notify mcp --help` and `-h` print the usage (#40). `agentic-notify mcp --version`, `-V` and `-v` print the version. Each exits 0 and does not start the server. Before, `mcp --help` started the MCP server and waited on stdin.
 - The `agentic-notify-mcp` bin's usage line lists `-h` and `-V`.
 - The publish workflow runs one publish at a time per ref (#44). A second run waits for the first. A running publish finishes.
+- The MCP tools advertise new input schemas, from zod 4 (#52). Object schemas no longer set `additionalProperties: false`, and integer fields carry a min and max. Extra keys are still stripped at runtime. Invalid-argument error text uses zod 4 wording. The status codes and the result shape do not change.
+- The MCP SDK floor is `^1.23.0` (#52), the first release that accepts zod 4 schemas.
 
 ## 0.4.0
 
