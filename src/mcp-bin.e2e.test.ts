@@ -70,6 +70,13 @@ test("mcp --version --help prints usage, because help is checked first, as in th
   expect(result.stderr).toBe("");
 }, 10_000);
 
+test("--version --help without the mcp word prints the version, as before", async () => {
+  const result = await run(["--version", "--help"]);
+  expect(result.timedOut).toBe(false);
+  expect(result.code).toBe(0);
+  expect(result.stdout).toBe(`${version}\n`);
+}, 10_000);
+
 test.each(["--version", "-V", "-v"])("mcp %s prints the package version and exits 0", async (flag) => {
   const result = await run(["mcp", flag]);
   expect(result.timedOut).toBe(false);

@@ -12,7 +12,9 @@ After mcp, -v also prints the version.
 const argv = process.argv.slice(2);
 const mcpWord = argv[0] === "mcp";
 const args = mcpWord ? argv.slice(1) : argv;
-const has = (...names: string[]) => args.some((a) => names.includes(a));
+// Without the mcp word, only the first argument is a flag, as before. After it, every argument is read, as the package CLI does.
+const flags = mcpWord ? args : args.slice(0, 1);
+const has = (...names: string[]) => flags.some((a) => names.includes(a));
 
 // The package CLI also takes -v for --version after the mcp word, so the bin does too.
 if (has("--help", "-h")) {
