@@ -62,6 +62,14 @@ test.each(["--help", "-h"])("mcp %s prints usage to stdout and exits 0 within 5 
   expect(Date.now() - started).toBeLessThan(5000);
 }, 10_000);
 
+test("mcp --version --help prints usage, because help is checked first, as in the CLI", async () => {
+  const result = await run(["mcp", "--version", "--help"]);
+  expect(result.timedOut).toBe(false);
+  expect(result.code).toBe(0);
+  expect(result.stdout).toContain("Usage: agentic-notify-mcp [mcp] [--help | -h | --version | -V]");
+  expect(result.stderr).toBe("");
+}, 10_000);
+
 test.each(["--version", "-V", "-v"])("mcp %s prints the package version and exits 0", async (flag) => {
   const result = await run(["mcp", flag]);
   expect(result.timedOut).toBe(false);
