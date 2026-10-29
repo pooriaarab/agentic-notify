@@ -78,7 +78,7 @@ export function createWorker(config: WorkerConfig) {
         apps.delete(env);
         return json({ error: "not_configured" }, 503);
       }
-      // Fail closed: with no database or no identity setup, the API refuses every call.
+      // Fail closed: with no database, the API refuses every call. Without a valid key, every route is 401.
       if (!app) return json({ error: "not_configured" }, 503);
       return app.fetch(request);
     },

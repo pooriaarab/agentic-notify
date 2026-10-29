@@ -88,6 +88,12 @@ export function createApp(options: AppOptions) {
   api.get("/me/export", guard(SCOPES.read), async (c) => c.json(await notifier.exportData(c.var.me)));
   api.delete("/me", guard(SCOPES.erase), async (c) => c.json(await notifier.erase(c.var.me)));
 
+  // No route matched. Anonymous callers still get 401, so they cannot map which routes exist.
+  api.all("*", async (c) => {
+    const who = await requirePrincipal(c.req.raw, options.auth);
+    return who instanceof Response ? who : c.json({ error: "not_found" }, 404);
+  });
+
   app.route("/api/v1", api);
 
   app.notFound((c) => c.json({ error: "not_found" }, 404));

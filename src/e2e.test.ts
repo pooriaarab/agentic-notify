@@ -93,6 +93,12 @@ describe("worker http api", () => {
     }
   });
 
+  test("an unknown path is 401 without a key and 404 with one", async () => {
+    expect((await fetch(`${url}api/v1/nope`)).status).toBe(401);
+    expect((await fetch(`${url}api/v1/notifications`, { method: "PATCH" })).status).toBe(401);
+    expect((await fetch(`${url}api/v1/nope`, { headers: { authorization: `Bearer ${READER}` } })).status).toBe(404);
+  });
+
   test("403: a good key without the scope for the route is refused", async () => {
     const raw = (token: string, method: string, path: string, body?: unknown) =>
       fetch(`${url}api/v1/${path}`, { method, headers: { authorization: `Bearer ${token}`, "content-type": "application/json" }, body: body === undefined ? undefined : JSON.stringify(body) });

@@ -50,7 +50,7 @@ npx wrangler deploy
 
 The Worker reads keys and principals from the same D1 database, with `agentic-identity`. Issue a key for each caller with `agentic-identity` (for example `issueCredential`, or its Worker), into this database. See Identity below.
 
-Without a D1 binding, every `/api/v1` call answers 503. A request without a valid key answers 401. Nobody gets in by default.
+Without a D1 binding, every `/api/v1` call answers 503. A request without a valid key answers 401, on unknown paths too. Nobody gets in by default.
 
 CLI, SDK and MCP talk to that Worker:
 
@@ -63,7 +63,7 @@ npx agentic-notify mcp      # tools: ping, list_notifications, read_notification
                             # export_data, erase_data, send_notification
 ```
 
-The MCP server needs `NOTIFY_URL` and `NOTIFY_TOKEN`. Without them only `ping` works. `erase_data` needs `confirm: true`.
+The MCP server needs `NOTIFY_URL` and `NOTIFY_TOKEN`. Without them only `ping` works. `erase_data` needs `confirm: true` and a key with `notify:admin`. `send_notification` needs `notify-send:write`. A tool that lacks its scope reports 403.
 
 ```ts
 import { createClient } from "agentic-notify/sdk";
@@ -95,7 +95,7 @@ A scope with a higher action covers the lower ones, so `notify:admin` covers `no
 
 ## Identity
 
-The Worker authenticates with `agentic-identity`. `requirePrincipal` from `agentic-identity/http` reads the bearer key, and the `Auth` port checks that it is not expired or revoked. The default `Auth` is `createStoreAuth` over the same D1 store. Each route checks one scope (see HTTP API). A delegated agent holds only the scopes that its person also holds.
+The Worker authenticates with `agentic-identity`. `requirePrincipal` from `agentic-identity/http` reads the credential, and the `Auth` port checks that it is not expired or revoked. The default `Auth` takes a bearer key, and also a `session` cookie that `agentic-identity` sets. A write with a cookie is refused, because no origin is allowed here. Pass your own `Auth` to accept bearer keys only. The default `Auth` is `createStoreAuth` over the same D1 store. Each route checks one scope (see HTTP API). A delegated agent holds only the scopes that its person also holds.
 
 A person, and a `user_token` of that person, use the inbox of the person. An agent (`agent`, `agent_of_human` or `agent_of_agent`) uses the inbox of its own id. A caller reads and changes only its own notifications.
 
@@ -107,7 +107,7 @@ Before this change, the Worker read a static `NOTIFY_TOKENS` secret: a map of to
 
 1. Delete the `NOTIFY_TOKENS` secret (`npx wrangler secret delete NOTIFY_TOKENS`).
 2. Make each caller a principal in the D1 database, and issue it a key with `agentic-identity`. The old `{ "kind": "human" }` becomes kind `human`, and `{ "kind": "agent" }` becomes kind `agent`.
-3. Give each principal scopes. For the old `canSend: true`, use `notify-send:write`. For the old default, use `notify:write` (it covers `notify:read`). Add `notify:admin` only where the caller may erase its data.
+3. Give each principal scopes. An old token could read, change and erase its own inbox. To keep that, use `notify:admin`. For less, use `notify:write` (it covers `notify:read`) or `notify:read`. For the old `canSend: true`, add `notify-send:write`. It is a separate resource, so it does not cover `notify:read`: a caller that sends and reads needs both.
 4. Give the new key to the CLI, SDK and MCP server as `NOTIFY_TOKEN`.
 
 Library users: `createApp` takes `auth` in place of `resolvePrincipal`. `createWorker` takes `auth` in place of `resolver`. `createStaticTokenResolver` and `PrincipalResolver` are gone. `authorizeSend` still works as an extra check after the scope, and the default now allows (the scope decides).
