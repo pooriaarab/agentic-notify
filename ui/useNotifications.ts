@@ -83,10 +83,10 @@ export function useNotifications(options: NotifyUiOptions): NotificationsState {
   const api = useCallback(async () => {
     // The wait for the token is under the same deadline as the calls.
     let timer: ReturnType<typeof setTimeout> | undefined;
-    const limit = new Promise<never>((_, reject) => (timer = setTimeout(() => reject(new Error("token timeout")), 10_000)));
+    const deadline = new Promise<never>((_, reject) => (timer = setTimeout(() => reject(new Error("token timeout")), 10_000)));
     try {
       // A getToken that throws means the session is gone: treat it as a refused token.
-      const token = await Promise.race([Promise.resolve().then(() => getToken.current()), limit]).catch((e: unknown) => {
+      const token = await Promise.race([Promise.resolve().then(() => getToken.current()), deadline]).catch((e: unknown) => {
         if (e instanceof Error && e.message === "token timeout") throw e;
         return "";
       });
@@ -110,6 +110,8 @@ export function useNotifications(options: NotifyUiOptions): NotificationsState {
       const [page, count] = await Promise.all([client.list({ limit }), client.unreadCount()]);
       // A newer refresh started: its answer wins.
       if (!alive.current || ticket !== latest.current) return;
+      // A wrong host or a proxy can answer 200 with another shape. That is a failure, not an empty inbox.
+      if (!Array.isArray(page?.items) || typeof count?.count !== "number") throw new ApiError(200, "bad_response");
       setItems(page.items);
       setUnread(count.count);
       setError(null);
