@@ -52,9 +52,19 @@ describe("d1 batch delete", () => {
     expect((await store.query("c")).items).toEqual([]);
   });
 
-  test("a failing batch rejects instead of reporting success", async () => {
-    const store = new D1Store({ ...db, prepare: (sql) => db.prepare(sql), batch: async () => { throw new Error("d1 down"); } });
-    await expect(store.deleteMany("c", ["a"])).rejects.toThrow(/d1 down/);
+  test("a batch that fails partway rejects and stops", async () => {
+    await db.prepare("DELETE FROM notify_docs").bind().run();
+    let n = 0;
+    const flaky: D1Like = {
+      prepare: (sql) => db.prepare(sql),
+      batch: async (stmts) => {
+        if (++n === 2) throw new Error("d1 down");
+        return db.batch(stmts);
+      },
+    };
+    const ids = Array.from({ length: 250 }, (_, i) => `id${i}`);
+    await expect(new D1Store(flaky).deleteMany("c", ids)).rejects.toThrow(/d1 down/);
+    expect(n).toBe(2);
   });
 });
 

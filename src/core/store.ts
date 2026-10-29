@@ -30,7 +30,10 @@ export interface Store {
   /** Replace only when the stored doc still equals `expected`. Equality is structural: key order does not matter. Atomic. */
   replaceIf(collection: string, id: string, expected: Doc, next: Doc): Promise<boolean>;
   delete(collection: string, id: string): Promise<void>;
-  /** Delete many ids in one round trip where the backend allows. Missing ids are ignored. An empty list does nothing. */
+  /**
+   * Delete many ids in few round trips. Missing ids are ignored. An empty list does nothing.
+   * Not atomic across batches: on a rejection some ids may be gone. Retry is safe.
+   */
   deleteMany(collection: string, ids: string[]): Promise<void>;
   query(collection: string, query?: Query): Promise<Page>;
 }

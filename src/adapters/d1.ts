@@ -10,13 +10,14 @@ import {
   type Store,
 } from "../core/store.js";
 
-/** The slice of the Cloudflare D1 binding this adapter uses. */
+/** A bound D1 statement. */
 export interface D1Statement {
   first<T = unknown>(): Promise<T | null>;
   all<T = unknown>(): Promise<{ results: T[] }>;
   run(): Promise<{ meta: { changes?: number } }>;
 }
 
+/** The slice of the Cloudflare D1 binding this adapter uses. */
 export interface D1Like {
   prepare(sql: string): { bind(...values: unknown[]): D1Statement };
   /** Runs the statements in one round trip, as one transaction. Takes statements from `bind`. */
