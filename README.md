@@ -5,7 +5,7 @@
 
 Notifications for humans and agents: in-app inbox, email and webhook delivery, with a CLI, API, MCP server and SDK.
 
-**Status: 0.0.0, scaffold only.** The package builds and ships a health endpoint, a version command and a `ping` MCP tool. The notification core lands in the next pull requests.
+**Status: 0.0.0, in progress.** The core works in memory: send, list, read, preferences, mute and digest, behind a Store port. Delivery channels, the Worker API, CLI and MCP tools land in the next pull requests.
 
 ## Install
 
@@ -19,6 +19,24 @@ npm install agentic-notify
 npx agentic-notify --version
 npx agentic-notify mcp
 ```
+
+## SDK
+
+```ts
+import { createNotifier, MemoryStore } from "agentic-notify";
+
+const notifier = createNotifier({ store: new MemoryStore() });
+await notifier.send({
+  recipient: { kind: "agent", id: "helper" },
+  type: "approval_request",
+  resource: { kind: "doc", id: "d1" },
+  actor: { kind: "human", id: "ana" },
+  body: "Please approve the edit",
+});
+const { items } = await notifier.list({ kind: "agent", id: "helper" });
+```
+
+Adapters pass the Store contract suite from `agentic-notify/testing`.
 
 ## Planned
 
