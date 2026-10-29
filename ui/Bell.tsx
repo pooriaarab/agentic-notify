@@ -43,6 +43,8 @@ export function NotificationBell(options: NotifyUiOptions & { /** Which edge of 
   useEffect(() => {
     if (unread > 0) setHadUnread(true);
   }, [unread]);
+  // A new host starts quiet, like a fresh load.
+  useEffect(() => setHadUnread(false), [options.baseUrl]);
   const status = error ? (unread > 0 ? `${unread} unread, could not refresh` : "could not load") : unread > 0 ? `${unread} unread` : "";
 
   useEffect(() => {

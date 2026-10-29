@@ -164,7 +164,7 @@ export function useNotifications(options: NotifyUiOptions): NotificationsState {
         await refreshNow.current();
       } catch (e) {
         const noScope = e instanceof ApiError && e.status === 403;
-        if (current()) setActionError(noScope ? "This token cannot make that change. It needs the notify:write scope." : describeError(e, "The change was not saved. Try again."));
+        if (current()) setActionError(noScope ? "The server refused the change. The token may lack the notify:write scope." : describeError(e, "The change was not saved. Try again."));
       } finally {
         if (current()) setBusy(false);
       }
