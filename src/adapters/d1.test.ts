@@ -43,3 +43,20 @@ test("the notifier sends, lists and erases through a D1 store", async () => {
   expect(await notifier.erase(ana)).toEqual({ notifications: 1 });
   expect((await notifier.list(ana)).items).toEqual([]);
 });
+
+test("erase and sweep span more than one delete batch on D1", async () => {
+  await db.prepare("DELETE FROM store_docs").run();
+  let t = 1000;
+  const store = createD1Store(db, { region: "unknown" });
+  const notifier = createNotifier({ store, now: () => t++, retentionMs: 10 });
+  const ana = { kind: "human", id: "ana" } as const;
+  const send = (to: typeof ana) =>
+    notifier.send({ recipient: to, type: "c", resource: { kind: "doc", id: "1" }, actor: { kind: "human", id: "bob" }, body: "x" });
+  for (let i = 0; i < 230; i++) await send(ana);
+  await store.put("notifications", "bad", { id: "bad", recipientKey: "human:ana", createdAt: "x" });
+  t = 5000;
+  expect(await notifier.sweep()).toBe(230);
+  for (let i = 0; i < 230; i++) await send(ana);
+  expect((await notifier.erase(ana)).notifications).toBe(231); // 230 sent, plus the bad doc
+  expect((await store.query("notifications")).items).toEqual([]);
+}, 60_000);

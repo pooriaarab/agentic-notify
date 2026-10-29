@@ -48,6 +48,15 @@ describe("send and list", () => {
     await expect(n.send({ ...input(), extra: 1 } as unknown as SendInput)).rejects.toThrow();
   });
 
+  test("a forged cursor is refused, not used to cut the list", async () => {
+    const n = setup();
+    await n.send(input());
+    const forge = (v: unknown) => btoa(JSON.stringify(v)).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+    for (const cursor of ["%%%", forge(["zzz", "x"]), forge([{ a: 1 }, "x"]), forge([1]), forge([1, 2]), forge([null, "x"])]) {
+      await expect(n.list(alice, { cursor })).rejects.toThrow(RangeError);
+    }
+  });
+
   test("pages with a cursor", async () => {
     const n = setup();
     for (let i = 0; i < 5; i++) await n.send(input({ body: `m${i}` }));

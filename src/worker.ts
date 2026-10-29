@@ -2,6 +2,7 @@ import { createApp, type AppOptions } from "./api.js";
 import { parseRegion } from "agentic-identity";
 import { createD1Store, D1_SCHEMA, type D1Like } from "agentic-identity/cloudflare";
 import { createStaticTokenResolver, type PrincipalResolver } from "./auth.js";
+import { NOTES } from "./core/gdpr.js";
 import { createNotifier } from "./core/service.js";
 import { VERSION } from "./version.js";
 
@@ -27,16 +28,25 @@ function json(value: unknown, status = 200): Response {
   return new Response(JSON.stringify(value), { status, headers: { "content-type": "application/json" } });
 }
 
+// Indexes for the inbox list (by recipient, newest first) and the retention sweep (oldest first).
+const INDEXES = [
+  `CREATE INDEX IF NOT EXISTS notify_by_recipient ON store_docs (collection, json_extract(body, '$.recipientKey'), json_extract(body, '$.createdAt'), id)`,
+  `CREATE INDEX IF NOT EXISTS notify_by_created ON store_docs (collection, json_extract(body, '$.createdAt'), id)`,
+];
+
 /** Compose the Worker. Bring your own identity system through `resolver`. */
 export function createWorker(config: WorkerConfig) {
   const apps = new WeakMap<object, Promise<ReturnType<typeof createApp> | null>>();
 
   async function buildNotifier(env: WorkerEnv) {
     if (!env.DB) return null;
-    await env.DB.prepare(D1_SCHEMA).bind().run();
+    for (const sql of [D1_SCHEMA, ...INDEXES]) await env.DB.prepare(sql).bind().run();
     const days = env.NOTIFY_RETENTION_DAYS === undefined ? undefined : Number(env.NOTIFY_RETENTION_DAYS);
+    const store = createD1Store(env.DB, { region: parseRegion(env.NOTIFY_REGION ?? "eu") });
+    // One read now, so a bad region or an unreachable database refuses every call as not configured.
+    await store.query(NOTES, { limit: 1 });
     return createNotifier({
-      store: createD1Store(env.DB, { region: parseRegion(env.NOTIFY_REGION ?? "eu") }),
+      store,
       retentionMs: days === undefined ? undefined : days * 86_400_000,
     });
   }

@@ -65,6 +65,21 @@ function fromDoc(doc: Doc): Notification {
   return notificationSchema.parse(rest);
 }
 
+/**
+ * A cursor is base64url of JSON `[createdAt, id]`. The port does not check the type of the sort value,
+ * so a forged cursor could cut the list in an arbitrary place. Refuse anything else.
+ */
+function checkCursor(cursor: string): void {
+  try {
+    const bytes = Uint8Array.from(atob(cursor.replace(/-/g, "+").replace(/_/g, "/")), (c) => c.charCodeAt(0));
+    const parsed: unknown = JSON.parse(new TextDecoder().decode(bytes));
+    if (Array.isArray(parsed) && parsed.length === 2 && Number.isFinite(parsed[0]) && typeof parsed[1] === "string") return;
+  } catch {
+    // fall through
+  }
+  throw new RangeError("bad cursor");
+}
+
 export function createNotifier(options: NotifierOptions) {
   const { store } = options;
   const now = options.now ?? (() => Date.now());
@@ -113,21 +128,13 @@ export function createNotifier(options: NotifierOptions) {
     const r = recipientSchema.parse(recipient);
     const where: Record<string, string | null> = { recipientKey: recipientKey(r) };
     if (opts.unreadOnly) where.readAt = null;
-    let page;
-    try {
-      page = await store.query(NOTES, {
-        where,
-        orderBy: { field: "createdAt", direction: "desc" },
-        limit: opts.limit,
-        cursor: opts.cursor,
-      });
-    } catch (error) {
-      // The port throws a plain Error for a cursor it cannot read. That is caller input: report it as a RangeError.
-      if (opts.cursor !== undefined && error instanceof Error && /cursor/i.test(error.message)) {
-        throw new RangeError("bad cursor");
-      }
-      throw error;
-    }
+    if (opts.cursor !== undefined) checkCursor(opts.cursor);
+    const page = await store.query(NOTES, {
+      where,
+      orderBy: { field: "createdAt", direction: "desc" },
+      limit: opts.limit,
+      cursor: opts.cursor,
+    });
     return { items: page.items.map((i) => fromDoc(i.data)), nextCursor: page.nextCursor ?? null };
   }
 

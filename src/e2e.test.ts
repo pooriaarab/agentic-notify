@@ -145,6 +145,42 @@ describe("worker http api", () => {
   });
 });
 
+describe("worker region", () => {
+  async function workerWith(region: string | undefined): Promise<{ mf: Miniflare; url: string }> {
+    const bundle = await build({
+      entryPoints: ["src/worker.ts"],
+      bundle: true,
+      write: false,
+      format: "esm",
+      platform: "neutral",
+      mainFields: ["module", "main"],
+      conditions: ["worker", "browser"],
+      logLevel: "error",
+    });
+    const bindings: Record<string, string> = { NOTIFY_TOKENS: JSON.stringify(TOKENS) };
+    if (region !== undefined) bindings.NOTIFY_REGION = region;
+    const m = new Miniflare({
+      modules: true,
+      script: bundle.outputFiles[0]!.text,
+      compatibilityDate: "2026-01-01",
+      d1Databases: { DB: "notify-region" },
+      bindings,
+    });
+    return { mf: m, url: (await m.ready).toString() };
+  }
+
+  // Miniflare reports no serving region, so a region of "eu" cannot be confirmed and the API refuses.
+  test.each([undefined, "eu", "mars"])("region %s is refused as not configured", async (region) => {
+    const w = await workerWith(region);
+    try {
+      const res = await fetch(`${w.url}api/v1/notifications`, { headers: { authorization: `Bearer ${ANA}` } });
+      expect(res.status).toBe(503);
+    } finally {
+      await w.mf.dispose();
+    }
+  }, 60_000);
+});
+
 describe("cli over the worker", () => {
   async function cli(token: string, ...argv: string[]) {
     const out: string[] = [];

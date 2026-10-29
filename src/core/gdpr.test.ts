@@ -1,12 +1,12 @@
 import { describe, expect, test } from "vitest";
 import { createNotifier } from "./service.js";
 import { createMemoryStore, type Store } from "agentic-identity";
+import type { Recipient, SendInput } from "./types.js";
 
 /** A store whose deletes report success and do nothing. */
 function deleteIsNoop(store: Store): Store {
   return { ...store, transaction: (fn) => store.transaction((tx) => fn({ ...tx, delete: async () => {} })) };
 }
-import type { Recipient, SendInput } from "./types.js";
 
 const ana: Recipient = { kind: "human", id: "ana" };
 const bob: Recipient = { kind: "human", id: "bob" };
