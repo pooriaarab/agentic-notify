@@ -51,6 +51,25 @@ test.each(["--version", "-V"])("%s prints the package version and exits 0", asyn
   expect(result.stderr).toBe("");
 });
 
+// The `mcp` word may come first, as the package CLI takes it. Each form must answer and exit, never start the server.
+test.each(["--help", "-h"])("mcp %s prints usage to stdout and exits 0 within 5 s", async (flag) => {
+  const started = Date.now();
+  const result = await run(["mcp", flag]);
+  expect(result.timedOut).toBe(false);
+  expect(result.code).toBe(0);
+  expect(result.stdout).toContain("Usage: agentic-notify-mcp [--help | -h | --version | -V]");
+  expect(result.stderr).toBe("");
+  expect(Date.now() - started).toBeLessThan(5000);
+}, 10_000);
+
+test.each(["--version", "-V"])("mcp %s prints the package version and exits 0", async (flag) => {
+  const result = await run(["mcp", flag]);
+  expect(result.timedOut).toBe(false);
+  expect(result.code).toBe(0);
+  expect(result.stdout).toBe(`${version}\n`);
+  expect(result.stderr).toBe("");
+});
+
 test("no arguments starts the MCP server on stdio", async () => {
   const client = new Client({ name: "e2e", version: "0.0.0" });
   await client.connect(new StdioClientTransport({ command: process.execPath, args: [BIN] }));

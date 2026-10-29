@@ -2,6 +2,13 @@
 
 All notable changes to this package are listed here.
 
+## 0.4.3
+
+Patch. No change to the SDK, CLI, MCP or HTTP shape.
+
+- `agentic-notify-mcp mcp --help`, `-h`, `--version` and `-V` print the usage or the version and exit 0. Before, the bin read only its first argument, so the `mcp` word started the MCP server and it waited on stdin. The bin's own `--help` and `--version` already worked.
+- An end-to-end test runs these `mcp` forms of the bin and asserts exit 0 within 5 s.
+
 ## 0.4.2
 
 Patch. No change to the SDK, CLI, MCP or HTTP shape.
