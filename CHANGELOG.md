@@ -7,7 +7,7 @@ All notable changes to this package are listed here.
 Patch. No change to the SDK, CLI, MCP or HTTP shape.
 
 - The zod dependency is `^4.6.7` (#46). Earlier versions can use a lot of memory on oversized constrained collections (GHSA-mrhx-c7xc-m3w5).
-- Bad cursor and bad request body errors answer 400 under zod 4 (#46).
+- Bad cursor and bad request body errors answer 400 under zod 4 (#46). The `issues[].message` text in those 400 bodies follows zod 4's wording. A client that matches on the text must update.
 - `agentic-identity` is `^0.7.0` (#42). The lockfile follows. The `Store` and related types that this package re-exports come from 0.7.
 - `agentic-notify mcp --help` and `-h` print the usage (#40). `agentic-notify mcp --version`, `-V` and `-v` print the version. Each exits 0 and does not start the server. Before, `mcp --help` started the MCP server and waited on stdin.
 - The `agentic-notify-mcp` bin's usage line lists `-h` and `-V`.
