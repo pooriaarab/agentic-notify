@@ -5,7 +5,7 @@
 
 Notifications for humans and agents: in-app inbox, email and webhook delivery, with a CLI, API, MCP server and SDK.
 
-**Status: 0.3.0.** Breaking for 0.1.0 code and databases, see the CHANGELOG upgrade steps. Works today: the notification model, preferences and mute, digest, a store port from agentic-identity with its memory and D1 adapters, signed webhook and email delivery through a dispatcher, an HTTP API in a Worker, an SDK, a CLI, MCP tools, per-recipient export and erase, and a retention sweep. Not done: a real email provider adapter, webhook endpoint management, and a web UI.
+**Status: 0.4.0.** Breaking for Worker auth, see "Migrating from `NOTIFY_TOKENS`" below. Breaking for 0.1.0 code and databases, see the CHANGELOG upgrade steps. Works today: the notification model, preferences and mute, digest, a store port from agentic-identity with its memory and D1 adapters, signed webhook and email delivery through a dispatcher, an HTTP API in a Worker, an SDK, a CLI, MCP tools, per-recipient export and erase, and a retention sweep. Not done: a real email provider adapter, webhook endpoint management, and a web UI.
 
 ## Live demo
 
@@ -99,11 +99,11 @@ The Worker authenticates with `agentic-identity`. `requirePrincipal` from `agent
 
 A person, and a `user_token` of that person, use the inbox of the person. An agent (`agent`, `agent_of_human` or `agent_of_agent`) uses the inbox of its own id. A caller reads and changes only its own notifications.
 
-To use another identity system, call `createWorker({ auth })` with your own `Auth`. Import `createWorker` from `agentic-notify/worker`. `createApp({ notifier, auth })` takes the same port.
+To use another identity system, call `createWorker({ auth: (env, store) => myAuth })`, where `auth` builds your own `Auth` from the Worker env and the store. Import `createWorker` from `agentic-notify/worker`. `createApp({ notifier, auth })` takes the `Auth` value itself.
 
 ### Migrating from `NOTIFY_TOKENS`
 
-Before this change, the Worker read a static `NOTIFY_TOKENS` secret: a map of token to `{ kind, id, canSend }`. The tokens had no scopes. The Worker no longer reads it. Steps:
+Before 0.4.0, the Worker read a static `NOTIFY_TOKENS` secret: a map of token to `{ kind, id, canSend }`. The tokens had no scopes. The Worker no longer reads it. Steps:
 
 1. Delete the `NOTIFY_TOKENS` secret (`npx wrangler secret delete NOTIFY_TOKENS`).
 2. Make each caller a principal in the D1 database, and issue it a key with `agentic-identity`. The old `{ "kind": "human" }` becomes kind `human`, and `{ "kind": "agent" }` becomes kind `agent`.
