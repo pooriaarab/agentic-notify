@@ -21,8 +21,10 @@ export interface NotificationsState {
   unread: number;
   /** True until the first answer or the first error. */
   loading: boolean;
-  /** A message for a person, or null. The last good list stays in `items`. */
+  /** A load failure for a person, or null. The last good list stays in `items`. */
   error: string | null;
+  /** A failed mark call, or null. It stays until the next mark call starts. A refresh does not clear it. */
+  actionError: string | null;
   /** True while a mark call runs. */
   busy: boolean;
   refresh(): Promise<void>;
@@ -30,10 +32,10 @@ export interface NotificationsState {
   markAllRead(): Promise<void>;
 }
 
-export function describeError(error: unknown): string {
+export function describeError(error: unknown, action = "Notifications could not be loaded. Try again."): string {
   if (error instanceof ApiError && (error.status === 401 || error.status === 403)) return "The token was not accepted.";
   if (error instanceof ApiError && error.status >= 400 && error.status < 500) return "The server refused the request.";
-  return "Notifications could not be loaded. Try again.";
+  return action;
 }
 
 /** Check the options once, so a bad value fails at the call site and not on the first poll. */
@@ -50,16 +52,23 @@ export function checkOptions(options: NotifyUiOptions): void {
  * A refused call sets `error`. It never shows a failed call as success.
  */
 export function useNotifications(options: NotifyUiOptions): NotificationsState {
-  const { baseUrl, getToken, pollMs = 15_000, limit = 20, fetch: doFetch } = options;
+  checkOptions(options);
+  const { baseUrl, pollMs = 15_000, limit = 20 } = options;
+  // Held in refs, so an inline `getToken` does not restart the polling on each render of the host.
+  const getToken = useRef(options.getToken);
+  const doFetch = useRef(options.fetch);
+  getToken.current = options.getToken;
+  doFetch.current = options.fetch;
   const [items, setItems] = useState<Notification[]>([]);
   const [unread, setUnread] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [actionError, setActionError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const latest = useRef(0);
   const alive = useRef(true);
 
-  const api = useCallback(async () => createClient({ baseUrl, token: await getToken(), fetch: doFetch }), [baseUrl, getToken, doFetch]);
+  const api = useCallback(async () => createClient({ baseUrl, token: await getToken.current(), fetch: doFetch.current }), [baseUrl]);
 
   const refresh = useCallback(async () => {
     const ticket = ++latest.current;
@@ -82,10 +91,11 @@ export function useNotifications(options: NotifyUiOptions): NotificationsState {
   const mutate = useCallback(
     async (run: (client: Awaited<ReturnType<typeof api>>) => Promise<unknown>) => {
       setBusy(true);
+      setActionError(null);
       try {
         await run(await api());
       } catch (e) {
-        if (alive.current) setError(describeError(e));
+        if (alive.current) setActionError(describeError(e, "The change was not saved. Try again."));
         return;
       } finally {
         if (alive.current) setBusy(false);
@@ -112,5 +122,5 @@ export function useNotifications(options: NotifyUiOptions): NotificationsState {
     };
   }, [refresh, pollMs]);
 
-  return { items, unread, loading, error, busy, refresh, markRead, markAllRead };
+  return { items, unread, loading, error, actionError, busy, refresh, markRead, markAllRead };
 }

@@ -1,9 +1,10 @@
 import AxeBuilder from "@axe-core/playwright";
 import { expect, test, type Page } from "@playwright/test";
 import { mkdirSync } from "node:fs";
-import { ANA, BOT } from "../playwright.config.js";
+import { ANA, BOT } from "./keys.js";
 
-const SHOTS = "docs/screenshots";
+// Screenshots go to test-results. Set SCREENSHOTS=docs/screenshots to refresh the committed ones.
+const SHOTS = process.env.SCREENSHOTS ?? "test-results/screenshots";
 const SCHEMES = ["light", "dark"] as const;
 
 // Every view is checked in both color schemes: an axe WCAG 2.2 AA scan, then a screenshot for review.

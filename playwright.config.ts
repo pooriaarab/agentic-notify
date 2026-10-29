@@ -3,13 +3,12 @@ import { mkdtempSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { defineConfig } from "@playwright/test";
+import { ANA, BOT } from "./e2e-ui/keys.js";
 import { seedSql, type SeedCaller } from "./src/test-seed.js";
 
 // Wrangler 4 needs Node 22. On older Node the browser tests are skipped, like the process tests.
 const NODE_OK = Number(process.versions.node.split(".")[0]) >= 22;
 export const PORT = 8891;
-export const ANA = "ui-ana-0123456789-0123456789-0123456789";
-export const BOT = "ui-bot-0123456789-0123456789-0123456789";
 const CALLERS: SeedCaller[] = [
   { token: ANA, id: "ana", kind: "human", scopes: ["notify:read", "notify:write", "notify-send:write"] },
   { token: BOT, id: "build-bot", kind: "agent", scopes: ["notify-send:write"] },

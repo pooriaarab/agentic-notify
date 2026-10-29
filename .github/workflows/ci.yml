@@ -27,5 +27,6 @@ jobs:
         with:
           node-version: ${{ matrix.node }}
       - run: npm ci
-      - run: npx playwright install --with-deps chromium
+      - if: matrix.node != '20'
+        run: npx playwright install --with-deps chromium
       - run: npm run ci:local

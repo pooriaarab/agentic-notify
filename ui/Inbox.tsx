@@ -68,7 +68,7 @@ function Item({ n, busy, onRead }: { n: Notification; busy: boolean; onRead(id: 
 
 /** The list, the header actions, and the empty and error states. The bell puts this in a popover. */
 export function Inbox({ state, headingId }: { state: NotificationsState; headingId: string }) {
-  const { items, unread, loading, error, busy, markRead, markAllRead } = state;
+  const { items, unread, loading, error, actionError, busy, markRead, markAllRead } = state;
   return (
     <div className="agd-notify__inbox">
       <div className="agd-notify__head">
@@ -85,6 +85,11 @@ export function Inbox({ state, headingId }: { state: NotificationsState; heading
           <button type="button" className="agd-notify__retry" onClick={() => void state.refresh()}>
             Try again
           </button>
+        </p>
+      )}
+      {actionError && (
+        <p role="alert" className="agd-notify__error">
+          {actionError}
         </p>
       )}
       {loading ? (

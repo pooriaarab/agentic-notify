@@ -136,6 +136,7 @@ import "agentic-notify/ui.css";
 <NotificationBell baseUrl="https://notify.example.com" getToken={() => session.token} />;
 ```
 
+- The Worker sends no CORS headers. Serve the bell from the Worker's own origin, or put the Worker behind a proxy on your app's origin. A cross-origin page cannot call it, and the popover then shows a load error.
 - `getToken` runs before each request. Return the key of the signed-in person or agent. The server checks every call.
 - `pollMs` sets the refresh interval (default 15000, 0 turns it off). The page refreshes when the tab becomes visible. `limit` sets the list size (default 20).
 - A refused or failed call shows an alert in the popover. The list never shows a failed call as success.

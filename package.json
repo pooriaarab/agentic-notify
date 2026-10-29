@@ -69,7 +69,7 @@
     "deploy:demo": "npm run build:ui && WRANGLER_SEND_METRICS=false wrangler deploy --config wrangler.demo.jsonc",
     "check:worker": "esbuild src/worker.ts --bundle --platform=neutral --format=esm --log-level=warning --outfile=node_modules/.cache/worker-check.js",
     "build:ui": "node scripts/build-ui.mjs",
-    "test:ui": "npm run build && npm run build:ui && playwright test --pass-with-no-tests"
+    "test:ui": "npm run build:ui && playwright test --pass-with-no-tests"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.23.0",
