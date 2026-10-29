@@ -44,9 +44,37 @@ describe("export and erase", () => {
     expect((await notifier.list(bob)).items).toHaveLength(1);
     expect(await notifier.erase(ana)).toEqual({ notifications: 0 });
   });
+
+  test("erase catches a notification that arrives during the delete", async () => {
+    const store = new MemoryStore();
+    const notifier = createNotifier({ store });
+    await notifier.send(input(ana));
+    let injected = false;
+    const del = store.delete.bind(store);
+    store.delete = async (c, id) => {
+      await del(c, id);
+      if (!injected && c === "notifications") {
+        injected = true;
+        await notifier.send(input(ana, "late"));
+      }
+    };
+    expect((await notifier.erase(ana)).notifications).toBe(2);
+    expect((await notifier.exportData(ana)).notifications).toEqual([]);
+  });
 });
 
 describe("retention", () => {
+  test("a doc with a bad createdAt is left alone, not swept", async () => {
+    const store = new MemoryStore();
+    let t = 1000;
+    const notifier = createNotifier({ store, now: () => t, retentionMs: 10 });
+    await notifier.send(input(ana, "old"));
+    await store.put("notifications", "bad", { id: "bad", recipientKey: "human:ana", createdAt: "x" });
+    t = 5000;
+    expect(await notifier.sweep()).toBe(1);
+    expect(await store.get("notifications", "bad")).not.toBeNull();
+  });
+
   test("sweep removes only notifications older than the window, for all recipients", async () => {
     const { notifier, clock } = setup(1000);
     await notifier.send(input(ana, "old"));

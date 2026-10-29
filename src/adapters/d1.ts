@@ -97,8 +97,10 @@ export class D1Store implements Store {
     for (const [name, value] of Object.entries(query.where ?? {})) {
       if (value === null) conds.push(`${field(name)} IS NULL`);
       else {
-        conds.push(`${field(name)} = ?`);
-        args.push(bindable(value));
+        // Match the JSON type too, as the memory adapter does with ===.
+        const types = TYPES[typeof value] ?? [];
+        conds.push(`${field(name)} = ? AND json_type(doc, '$.${name}') IN (${types.map(() => "?").join(",")})`);
+        args.push(bindable(value), ...types);
       }
     }
     if (query.cursor !== undefined) {

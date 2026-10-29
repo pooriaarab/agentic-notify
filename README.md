@@ -41,7 +41,6 @@ Adapters pass the Store contract suite from `agentic-notify/testing`.
 ## Planned
 
 - SDK, HTTP API in a Worker, CLI, MCP server.
-- GDPR export and erase, retention, no personal data in logs.
 
 ## Develop
 
