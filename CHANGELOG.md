@@ -12,6 +12,14 @@ Minor. No change to the SDK, CLI, MCP or HTTP shape.
 - The demo Worker serves a demo page at `/ui/`. Run `npm run build:ui` before `npm run deploy:demo` (the script does it).
 - New browser tests with Playwright and axe (`npm run test:ui`).
 
+## 0.4.3
+
+Patch. No change to the SDK, CLI, MCP or HTTP shape.
+
+- `agentic-notify-mcp mcp --help`, `-h`, `--version` and `-V` print the usage or the version and exit 0. Before, the bin read only its first argument, so the `mcp` word started the MCP server and it waited on stdin. The bin's own `--help` and `--version` already worked.
+- The bin reads `--help`, `-h`, `--version` and `-V` anywhere after an optional leading `mcp` word, and `-v` after `mcp`, as the package CLI does. When both help and version are given, help wins, as in the CLI.
+- End-to-end tests run these forms of the bin and assert exit 0 within a time limit.
+
 ## 0.4.2
 
 Patch. No change to the SDK, CLI, MCP or HTTP shape.
