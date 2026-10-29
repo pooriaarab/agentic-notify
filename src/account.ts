@@ -40,7 +40,7 @@ function recipientOf(subject: Subject): Recipient {
 
 function check(subject: Subject, deps: NotifyAccountDeps): Recipient {
   const { notifier } = deps ?? ({} as Partial<NotifyAccountDeps>);
-  if ((["exportData", "erase"] as const).some((name) => typeof notifier?.[name] !== "function")) {
+  if ((["exportData", "eraseWithCounts"] as const).some((name) => typeof notifier?.[name] !== "function")) {
     throw new TypeError("notifyAccount needs deps.notifier");
   }
   return recipientOf(subject);
@@ -55,10 +55,6 @@ export const notifyAccount: NotifyAccount = {
   },
   async eraseAccount(subject, deps) {
     const recipient = check(subject, deps);
-    const { notifier } = deps;
-    // The export tells whether a preferences row is held: the erase itself reports only notifications.
-    const had = (await notifier.exportData(recipient)).preferences !== null;
-    const { notifications } = await notifier.erase(recipient);
-    return { notifications, preferences: had ? 1 : 0 };
+    return deps.notifier.eraseWithCounts(recipient);
   },
 };

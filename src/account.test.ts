@@ -6,6 +6,7 @@
 //  5. Notifications that name the subject only as actor stay with their recipients.
 //  6. The collection names stay stable.
 import { describe, expect, it } from "vitest";
+import { notifyAccount as fromSubpath } from "./account.js";
 import { createMemoryStore, createNotifier, notifyAccount } from "./index.js";
 import type { AccountSubject as Principal } from "./index.js";
 
@@ -75,6 +76,13 @@ describe("eraseAccount", () => {
     expect(await notifyAccount.exportAccount(ANA, deps)).toStrictEqual({ notifications: [], preferences: [] });
     expect(await notifyAccount.eraseAccount(ANA, deps)).toStrictEqual({ notifications: 0, preferences: 0 });
     expect((await notifyAccount.exportAccount(BOB, deps)).notifications).toHaveLength(1);
+  });
+
+  it("still erases when a stored doc is malformed, through the subpath entry", async () => {
+    const store = createMemoryStore();
+    const notifier = createNotifier({ store });
+    await store.put("notifications", "bad", { id: "bad", recipientKey: "human:ana", createdAt: "x" });
+    expect(await fromSubpath.eraseAccount(ANA, { notifier })).toStrictEqual({ notifications: 1, preferences: 0 });
   });
 
   it("leaves notifications that name the subject only as actor", async () => {
