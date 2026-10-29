@@ -2,6 +2,12 @@
 
 All notable changes to this package are listed here.
 
+## 0.6.1
+
+Patch. No change to the SDK, CLI, MCP or HTTP shape. Version 0.6.0 was not published; its changes below first ship in 0.6.1.
+
+- Install Chromium before the publish job runs its browser tests.
+
 ## 0.6.0
 
 Minor. New export, no change to the SDK, CLI, MCP or HTTP shape.
