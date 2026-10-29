@@ -1,4 +1,5 @@
 import { build } from "esbuild";
+import { D1_SCHEMA } from "agentic-identity/cloudflare";
 import { Miniflare } from "miniflare";
 import { afterAll, beforeAll, describe, expect, test } from "vitest";
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
@@ -35,7 +36,7 @@ beforeAll(async () => {
     script: bundle.outputFiles[0]!.text,
     compatibilityDate: "2026-01-01",
     d1Databases: { DB: "notify-e2e" },
-    bindings: { NOTIFY_TOKENS: JSON.stringify(TOKENS) },
+    bindings: { NOTIFY_TOKENS: JSON.stringify(TOKENS), NOTIFY_REGION: "unknown" },
   });
   url = (await mf.ready).toString();
 }, 60_000);
@@ -143,6 +144,66 @@ describe("worker http api", () => {
       await bare.dispose();
     }
   });
+});
+
+describe("worker region", () => {
+  async function workerWith(region: string | undefined): Promise<{ mf: Miniflare; url: string }> {
+    const bundle = await build({
+      entryPoints: ["src/worker.ts"],
+      bundle: true,
+      write: false,
+      format: "esm",
+      platform: "neutral",
+      mainFields: ["module", "main"],
+      conditions: ["worker", "browser"],
+      logLevel: "error",
+    });
+    const bindings: Record<string, string> = { NOTIFY_TOKENS: JSON.stringify(TOKENS) };
+    if (region !== undefined) bindings.NOTIFY_REGION = region;
+    const m = new Miniflare({
+      modules: true,
+      script: bundle.outputFiles[0]!.text,
+      compatibilityDate: "2026-01-01",
+      d1Databases: { DB: "notify-region" + Math.random().toString(36).slice(2) },
+      bindings,
+    });
+    return { mf: m, url: (await m.ready).toString() };
+  }
+
+  test("a 0.1.0 table that still holds rows refuses every call until the rows are copied", async () => {
+    const w = await workerWith("unknown");
+    try {
+      const db = await w.mf.getD1Database("DB");
+      await db.exec("CREATE TABLE notify_docs (collection TEXT NOT NULL, id TEXT NOT NULL, doc TEXT NOT NULL, PRIMARY KEY (collection, id))");
+      const old = JSON.stringify({
+        id: "n1", type: "mention", recipient: { kind: "human", id: "ana" }, resource: { kind: "doc", id: "d1" },
+        actor: { kind: "agent", id: "helper" }, body: "old note", createdAt: 5, readAt: null, recipientKey: "human:ana",
+      });
+      await db.prepare("INSERT INTO notify_docs (collection, id, doc) VALUES ('notifications', 'n1', ?)").bind(old).run();
+      const ask = () => fetch(`${w.url}api/v1/notifications`, { headers: { authorization: `Bearer ${ANA}` } });
+      expect((await ask()).status).toBe(503);
+      // The upgrade steps from the changelog.
+      await db.exec(D1_SCHEMA);
+      await db.exec("INSERT OR IGNORE INTO store_docs (collection, id, body, version) SELECT collection, id, doc, 1 FROM notify_docs");
+      await db.exec("DROP TABLE notify_docs");
+      const res = await ask();
+      expect(res.status).toBe(200);
+      expect(((await res.json()) as { items: { body: string }[] }).items.map((i) => i.body)).toEqual(["old note"]);
+    } finally {
+      await w.mf.dispose();
+    }
+  }, 60_000);
+
+  // Miniflare reports no serving region, so a region of "eu" cannot be confirmed and the API refuses.
+  test.each([undefined, "eu", "mars"])("region %s is refused as not configured", async (region) => {
+    const w = await workerWith(region);
+    try {
+      const res = await fetch(`${w.url}api/v1/notifications`, { headers: { authorization: `Bearer ${ANA}` } });
+      expect(res.status).toBe(503);
+    } finally {
+      await w.mf.dispose();
+    }
+  }, 60_000);
 });
 
 describe("cli over the worker", () => {

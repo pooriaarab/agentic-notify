@@ -1,4 +1,4 @@
-import { storeContract } from "../testing.js";
-import { MemoryStore } from "./store.js";
+import { createMemoryStore } from "agentic-identity";
+import { runStoreContract } from "agentic-identity/testing";
 
-storeContract("memory", async () => new MemoryStore(), async (s) => s);
+runStoreContract((options) => createMemoryStore(options));
