@@ -177,6 +177,10 @@ export function useNotifications(options: NotifyUiOptions): NotificationsState {
     setUnread(0);
     setLoading(true);
     setError(null);
+    setActionError(null);
+    // The rate-limit pause and the refused-token stop belong to the old host.
+    pausedUntil.current = 0;
+    refused.current = false;
   }, [baseUrl, limit]);
 
   useEffect(() => {

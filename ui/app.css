@@ -41,6 +41,7 @@
 .agd-notify__panel:focus { outline: none; }
 .agd-notify__panel:focus-visible { outline: 2px solid var(--agd-color-focus); outline-offset: -2px; }
 .agd-notify__inbox:focus { outline: none; }
+.agd-notify__inbox:focus-visible { outline: 2px solid var(--agd-color-focus); outline-offset: -2px; }
 /* On a phone the panel spans the screen under the top bar, so it never runs off the edge. */
 @media (max-width: 30rem) {
   .agd-notify { position: static; }

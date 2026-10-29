@@ -74,6 +74,8 @@ test("bell: sign in, live update, read one, read all, keyboard, phone width", as
   await expect(panel.getByRole("button", { name: /^Mark read:/ })).toHaveCount(1);
   // The focused button is gone: focus stays in the popover, so Escape still closes it.
   await expect(panel.locator(":focus")).toHaveCount(1);
+  // The focus ring is visible, not only present.
+  await expect(panel.locator(":focus")).toHaveCSS("outline-style", "solid");
   await page.keyboard.press("Escape");
   await expect(panel).toBeHidden();
   await expect(page.getByRole("button", { name: "Notifications, 1 unread" })).toBeFocused();
