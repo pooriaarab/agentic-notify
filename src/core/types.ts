@@ -13,7 +13,15 @@ export type Recipient = z.infer<typeof recipientSchema>;
 export const typeNameSchema = z.string().regex(/^[a-z][a-z0-9_.-]{0,63}$/);
 
 export const resourceRefSchema = z
-  .object({ kind: z.string().min(1).max(100), id, url: z.string().max(2000).optional() })
+  .object({
+    kind: z.string().min(1).max(100),
+    id,
+    url: z
+      .string()
+      .max(2000)
+      .refine((u) => /^https?:\/\//i.test(u) && URL.canParse(u), "url must be http or https")
+      .optional(),
+  })
   .strict();
 export type ResourceRef = z.infer<typeof resourceRefSchema>;
 
@@ -49,7 +57,10 @@ export type SendInput = z.infer<typeof sendInputSchema>;
 
 export const preferencesSchema = z
   .object({
-    channels: z.record(typeNameSchema, z.array(z.enum(CHANNELS)).max(CHANNELS.length)),
+    channels: z.record(typeNameSchema, z
+        .array(z.enum(CHANNELS))
+        .max(CHANNELS.length)
+        .refine((list) => new Set(list).size === list.length, "channels must not repeat")),
     muted: z.boolean(),
     mutedTypes: z.array(typeNameSchema).max(200),
   })

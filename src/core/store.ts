@@ -128,6 +128,11 @@ export class MemoryStore implements Store {
       .sort(([ia, a], [ib, b]) => dir * (compare(key(ia, a), key(ib, b)) || compare(ia, ib)));
     if (query.cursor !== undefined) {
       const [cv, cid] = decodeCursor(query.cursor);
+      const kind = (v: Scalar) => (v === null ? "null" : typeof v);
+      // A cursor from another field type would give an arbitrary cut. Refuse it.
+      if (rows.some(([id, doc]) => key(id, doc) !== null && cv !== null && kind(key(id, doc)) !== kind(cv))) {
+        throw new RangeError("bad cursor");
+      }
       rows = rows.filter(([id, doc]) => dir * (compare(key(id, doc), cv) || compare(id, cid)) > 0);
     }
     const slice = rows.slice(0, limit + 1);

@@ -1,3 +1,4 @@
+import { z } from "zod";
 import type { Store } from "./store.js";
 import {
   DEFAULT_CHANNELS,
@@ -85,14 +86,16 @@ export function createNotifier(options: NotifierOptions) {
     if (prefs.muted || prefs.mutedTypes.includes(valid.type)) {
       return { notification: null, channels: [], muted: true };
     }
-    const channels = [...(prefs.channels[valid.type] ?? DEFAULT_CHANNELS)];
+    const own = Object.hasOwn(prefs.channels, valid.type) ? prefs.channels[valid.type] : undefined;
+    const channels = [...(own ?? DEFAULT_CHANNELS)];
     if (!channels.includes("inbox")) return { notification: null, channels, muted: false };
-    const notification: Notification = {
+    // Check the clock and id source too, so a bad value never reaches the store.
+    const notification = notificationSchema.parse({
       ...valid,
       id: newId(),
       createdAt: now(),
       readAt: null,
-    };
+    });
     if (!(await store.create(NOTES, notification.id, toDoc(notification)))) {
       throw new Error("notification id collision");
     }
@@ -129,7 +132,7 @@ export function createNotifier(options: NotifierOptions) {
       const doc = await load(recipient, id);
       const n = fromDoc(doc);
       if (n.readAt !== null) return n;
-      const next = { ...n, readAt: now() };
+      const next = notificationSchema.parse({ ...n, readAt: now() });
       if (await store.replaceIf(NOTES, id, doc, toDoc(next))) return next;
     }
     throw new Error("could not mark read: too much contention");
@@ -139,12 +142,14 @@ export function createNotifier(options: NotifierOptions) {
     let count = 0;
     for (;;) {
       const page = await list(recipient, { unreadOnly: true, limit: 100 });
-      if (page.items.length === 0) return count;
+      let progress = 0;
       for (const n of page.items) {
-        const was = n.readAt;
-        const done = await markRead(recipient, n.id);
-        if (was === null && done.readAt !== null) count++;
+        // markRead returns the stored doc, so a concurrent reader may have won. Count only our wins.
+        if (n.readAt === null && (await markRead(recipient, n.id)).readAt !== null) progress++;
       }
+      count += progress;
+      // Stop on an empty pass, so a store that filters wrongly cannot loop forever.
+      if (progress === 0) return count;
     }
   }
 
@@ -161,6 +166,7 @@ export function createNotifier(options: NotifierOptions) {
 
   /** Group the unread notifications created at or after `since`. */
   async function digest(recipient: Recipient, since = 0): Promise<Digest> {
+    since = z.number().int().nonnegative().parse(since);
     const groups = new Map<string, { count: number; latest: Notification }>();
     let total = 0;
     let cursor: string | undefined;

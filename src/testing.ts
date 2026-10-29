@@ -1,5 +1,5 @@
 import { describe, expect, test } from "vitest";
-import type { Store } from "./core/store.js";
+import { encodeCursor, type Query, type Store } from "./core/store.js";
 
 /**
  * Contract suite for the Store port. Run it on every adapter.
@@ -98,10 +98,35 @@ export function storeContract(name: string, make: () => Promise<Store>, makePeer
           cursor = page.nextCursor ?? undefined;
           pages++;
         } while (cursor);
+        const whole = (await s.query("c", { orderBy: { field: "n", direction }, limit: 50 })).items.map((i) => i.id);
         expect(pages).toBe(3);
+        expect(seen).toEqual(whole);
         expect(new Set(seen).size).toBe(7);
-        expect(seen).toHaveLength(7);
       }
+    });
+
+    test("cursor paging works with a filter and with no orderBy", async () => {
+      const s = await make();
+      for (let i = 0; i < 6; i++) await s.put("c", `id${i}`, { g: i % 2 === 0 ? "even" : "odd", n: i });
+      const walk = async (query: Query) => {
+        const seen: string[] = [];
+        let cursor: string | undefined;
+        do {
+          const page = await s.query("c", { ...query, limit: 2, cursor });
+          seen.push(...page.items.map((i) => i.id));
+          cursor = page.nextCursor ?? undefined;
+        } while (cursor);
+        return seen;
+      };
+      expect(await walk({ where: { g: "even" }, orderBy: { field: "n", direction: "desc" } })).toEqual(["id4", "id2", "id0"]);
+      expect(await walk({})).toEqual(["id0", "id1", "id2", "id3", "id4", "id5"]);
+    });
+
+    test("a cursor of the wrong type for the sort field is rejected", async () => {
+      const s = await make();
+      await s.put("c", "a", { n: 1 });
+      await s.put("c", "b", { n: 2 });
+      await expect(s.query("c", { orderBy: { field: "n", direction: "asc" }, cursor: encodeCursor("abc", "a") })).rejects.toThrow();
     });
 
     test("bad limit and bad cursor are rejected", async () => {

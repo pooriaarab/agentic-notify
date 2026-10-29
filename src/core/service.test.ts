@@ -134,3 +134,32 @@ describe("digest", () => {
     expect((await n.digest(alice)).total).toBe(0);
   });
 });
+
+describe("bad data", () => {
+  test("type names that match object prototype keys work", async () => {
+    const n = setup();
+    expect((await n.send(input({ type: "constructor" }))).notification).not.toBeNull();
+    expect((await n.send(input({ type: "constructor" }))).channels).toEqual(["inbox"]);
+  });
+
+  test("a bad clock or id source fails before anything is stored", async () => {
+    for (const make of [() => createNotifier({ store: new MemoryStore(), now: () => Number.NaN }), () => createNotifier({ store: new MemoryStore(), newId: () => "" })]) {
+      const n = make();
+      await expect(n.send(input())).rejects.toThrow();
+      expect((await n.list(alice)).items).toEqual([]);
+    }
+  });
+
+  test("digest rejects a since that is not a whole non-negative number", async () => {
+    const n = setup();
+    await n.send(input());
+    for (const bad of [Number.NaN, -1, 1.5, "1" as never, Infinity]) await expect(n.digest(alice, bad)).rejects.toThrow();
+  });
+
+  test("repeated channels and non-http urls are rejected", async () => {
+    const n = setup();
+    await expect(n.setPreferences(alice, { channels: { x: ["email", "email"] }, muted: false, mutedTypes: [] })).rejects.toThrow();
+    await expect(n.send(input({ resource: { kind: "doc", id: "1", url: "javascript:alert(1)" } }))).rejects.toThrow();
+    await expect(n.send(input({ resource: { kind: "doc", id: "1", url: "https://example.org/d/1" } }))).resolves.toBeDefined();
+  });
+});
