@@ -28,11 +28,12 @@ function json(value: unknown, status = 200): Response {
   return new Response(JSON.stringify(value), { status, headers: { "content-type": "application/json" } });
 }
 
-// Indexes for the inbox list (by recipient, newest first) and the retention sweep (oldest first).
-const INDEXES = [
-  `CREATE INDEX IF NOT EXISTS notify_by_recipient ON store_docs (collection, json_extract(body, '$.recipientKey'), json_extract(body, '$.createdAt'), id)`,
-  `CREATE INDEX IF NOT EXISTS notify_by_created ON store_docs (collection, json_extract(body, '$.createdAt'), id)`,
-];
+/** True when a 0.1.0 table still holds rows. Those rows would be out of reach of erase, export and retention. */
+async function hasLegacyRows(db: D1Like): Promise<boolean> {
+  const table = await db.prepare("SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'notify_docs'").bind().first();
+  if (!table) return false;
+  return (await db.prepare("SELECT 1 AS found FROM notify_docs LIMIT 1").bind().first()) !== null;
+}
 
 /** Compose the Worker. Bring your own identity system through `resolver`. */
 export function createWorker(config: WorkerConfig) {
@@ -40,7 +41,9 @@ export function createWorker(config: WorkerConfig) {
 
   async function buildNotifier(env: WorkerEnv) {
     if (!env.DB) return null;
-    for (const sql of [D1_SCHEMA, ...INDEXES]) await env.DB.prepare(sql).bind().run();
+    // Fail closed: refuse to run while old rows sit unreachable. See CHANGELOG for the copy statement.
+    if (await hasLegacyRows(env.DB)) throw new Error("notify_docs holds rows that were not copied to store_docs");
+    await env.DB.prepare(D1_SCHEMA).bind().run();
     const days = env.NOTIFY_RETENTION_DAYS === undefined ? undefined : Number(env.NOTIFY_RETENTION_DAYS);
     const store = createD1Store(env.DB, { region: parseRegion(env.NOTIFY_REGION ?? "eu") });
     // One read now, so a bad region or an unreachable database refuses every call as not configured.

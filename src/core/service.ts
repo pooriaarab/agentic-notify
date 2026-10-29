@@ -65,6 +65,16 @@ function fromDoc(doc: Doc): Notification {
   return notificationSchema.parse(rest);
 }
 
+const DEFAULT_LIMIT = 50;
+const MAX_LIMIT = 200;
+
+/** The port takes any limit of 1 or more. Keep the page small and bounded. */
+function clampLimit(limit: number | undefined): number {
+  if (limit === undefined) return DEFAULT_LIMIT;
+  if (!Number.isInteger(limit) || limit < 1) throw new RangeError("limit must be an integer of 1 or more");
+  return Math.min(limit, MAX_LIMIT);
+}
+
 /**
  * A cursor is base64url of JSON `[createdAt, id]`. The port does not check the type of the sort value,
  * so a forged cursor could cut the list in an arbitrary place. Refuse anything else.
@@ -129,10 +139,11 @@ export function createNotifier(options: NotifierOptions) {
     const where: Record<string, string | null> = { recipientKey: recipientKey(r) };
     if (opts.unreadOnly) where.readAt = null;
     if (opts.cursor !== undefined) checkCursor(opts.cursor);
+    const limit = clampLimit(opts.limit);
     const page = await store.query(NOTES, {
       where,
       orderBy: { field: "createdAt", direction: "desc" },
-      limit: opts.limit,
+      limit,
       cursor: opts.cursor,
     });
     return { items: page.items.map((i) => fromDoc(i.data)), nextCursor: page.nextCursor ?? null };

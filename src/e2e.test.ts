@@ -163,11 +163,35 @@ describe("worker region", () => {
       modules: true,
       script: bundle.outputFiles[0]!.text,
       compatibilityDate: "2026-01-01",
-      d1Databases: { DB: "notify-region" },
+      d1Databases: { DB: "notify-region" + Math.random().toString(36).slice(2) },
       bindings,
     });
     return { mf: m, url: (await m.ready).toString() };
   }
+
+  test("a 0.1.0 table that still holds rows refuses every call, and an empty one does not", async () => {
+    const w = await workerWith("unknown");
+    try {
+      const db = await w.mf.getD1Database("DB");
+      await db.exec("CREATE TABLE notify_docs (collection TEXT NOT NULL, id TEXT NOT NULL, doc TEXT NOT NULL, PRIMARY KEY (collection, id))");
+      const ask = () => fetch(`${w.url}api/v1/notifications`, { headers: { authorization: `Bearer ${ANA}` } });
+      expect((await ask()).status).toBe(200);
+      await db.exec("INSERT INTO notify_docs (collection, id, doc) VALUES ('notifications', 'n1', '{}')");
+      // The first build succeeded and is cached, so use a fresh worker over the same database.
+      const w2 = await workerWith("unknown");
+      try {
+        const db2 = await w2.mf.getD1Database("DB");
+        await db2.exec("CREATE TABLE notify_docs (collection TEXT NOT NULL, id TEXT NOT NULL, doc TEXT NOT NULL, PRIMARY KEY (collection, id))");
+        await db2.exec("INSERT INTO notify_docs (collection, id, doc) VALUES ('notifications', 'n1', '{}')");
+        const res = await fetch(`${w2.url}api/v1/notifications`, { headers: { authorization: `Bearer ${ANA}` } });
+        expect(res.status).toBe(503);
+      } finally {
+        await w2.mf.dispose();
+      }
+    } finally {
+      await w.mf.dispose();
+    }
+  }, 60_000);
 
   // Miniflare reports no serving region, so a region of "eu" cannot be confirmed and the API refuses.
   test.each([undefined, "eu", "mars"])("region %s is refused as not configured", async (region) => {

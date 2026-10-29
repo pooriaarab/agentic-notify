@@ -48,6 +48,14 @@ describe("send and list", () => {
     await expect(n.send({ ...input(), extra: 1 } as unknown as SendInput)).rejects.toThrow();
   });
 
+  test("the page size defaults to 50, is capped at 200, and refuses a bad limit", async () => {
+    const n = setup();
+    for (let i = 0; i < 205; i++) await n.send(input());
+    expect((await n.list(alice)).items).toHaveLength(50);
+    expect((await n.list(alice, { limit: 1_000_000 })).items).toHaveLength(200);
+    for (const limit of [0, -1, 1.5, Number.NaN]) await expect(n.list(alice, { limit })).rejects.toThrow(RangeError);
+  });
+
   test("a forged cursor is refused, not used to cut the list", async () => {
     const n = setup();
     await n.send(input());

@@ -56,6 +56,7 @@ test("erase and sweep span more than one delete batch on D1", async () => {
   await store.put("notifications", "bad", { id: "bad", recipientKey: "human:ana", createdAt: "x" });
   t = 5000;
   expect(await notifier.sweep()).toBe(230);
+  expect((await store.query("notifications")).items.map((i) => i.id)).toEqual(["bad"]);
   for (let i = 0; i < 230; i++) await send(ana);
   expect((await notifier.erase(ana)).notifications).toBe(231); // 230 sent, plus the bad doc
   expect((await store.query("notifications")).items).toEqual([]);
