@@ -59,7 +59,7 @@ CLI, SDK and MCP talk to that Worker:
 export NOTIFY_URL=https://notify.example.org NOTIFY_TOKEN=...
 npx agentic-notify send --to human:ana --type mention --resource doc:d1 --body "Look at this"
 npx agentic-notify list --unread
-npx agentic-notify mcp      # tools: list_notifications, read_notification, mark_read,
+npx agentic-notify mcp      # tools: ping, list_notifications, read_notification, mark_read,
                             # mark_all_read, get_preferences, set_preferences, unread_count, digest,
                             # export_data, erase_data, send_notification
 ```
@@ -85,7 +85,7 @@ All routes sit under `/api/v1` and need `Authorization: Bearer <token>`. `GET /h
 
 ## Identity
 
-Auth is a port: `PrincipalResolver` turns a request into `{ kind: "human" | "agent", id }` or null. `createStaticTokenResolver` is a small example. To use another identity system, call `createWorker({ resolver })` with your own resolver. A caller reads and changes only its own notifications.
+Auth is a port: `PrincipalResolver` turns a request into `{ kind: "human" | "agent", id }` or null. `createStaticTokenResolver` is a small example. To use another identity system, call `createWorker({ resolver })` with your own resolver. Import `createWorker` from `agentic-notify/worker`. A caller reads and changes only its own notifications.
 
 ## Privacy
 
@@ -94,6 +94,23 @@ Auth is a port: `PrincipalResolver` turns a request into `{ kind: "human" | "age
 - The Worker reads `NOTIFY_REGION` (`eu`, `us` or `unknown`, default `eu`). The D1 adapter refuses a database that does not report a serving region in that area. For local runs without a real D1, set `NOTIFY_REGION=unknown`.
 - Logs hold ids, channel names and error names only. They never hold bodies or addresses.
 - Erase removes a recipient's own notifications and preferences. Notifications that name the person only as actor stay with their recipients.
+
+## Testing
+
+`agentic-notify/testing` helps you test a store adapter and your own code.
+
+`runStoreContract(make)` runs the store contract suite. Call it at the top level of a vitest test
+file, and install `vitest` 3 or later. The factory makes a new store for each call. It must pass
+`options` to the store, so that stores made with the same `shared` value see the same data:
+
+```ts
+import { createMemoryStore } from "agentic-notify";
+import { runStoreContract } from "agentic-notify/testing";
+
+runStoreContract((options) => createMemoryStore(options));
+```
+
+`TestEmailAdapter` records each message in memory and can fail a set number of sends.
 
 ## Limits
 
