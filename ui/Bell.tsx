@@ -99,7 +99,7 @@ export function NotificationBell(options: NotifyUiOptions & { /** Which edge of 
           <span className="agd-sr-only" role="status">
             {error ? "" : unread > 0 ? `${unread} unread notifications` : "No unread notifications"}
           </span>
-          <Inbox state={state} headingId={headingId} />
+          <Inbox state={state} headingId={headingId} keepFocus />
         </div>
       )}
     </div>

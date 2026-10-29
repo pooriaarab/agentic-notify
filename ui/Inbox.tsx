@@ -20,9 +20,13 @@ export function ago(createdAt: number, now = Date.now()): string {
 
 /** Only web links open. The server checks the same, and a value that is not a URL never becomes a link. */
 function safeHref(url: string | undefined): string | undefined {
-  if (!url || !URL.canParse(url)) return undefined;
-  const { protocol } = new URL(url);
-  return protocol === "https:" || protocol === "http:" ? url : undefined;
+  if (!url) return undefined;
+  try {
+    const { protocol } = new URL(url);
+    return protocol === "https:" || protocol === "http:" ? url : undefined;
+  } catch {
+    return undefined;
+  }
 }
 
 /** A short form of the body for a control name, so a screen reader does not read 2000 characters. */
@@ -71,7 +75,7 @@ function Item({ n, busy, now, onRead }: { n: Notification; busy: boolean; now: n
 }
 
 /** The list, the header actions, and the empty and error states. The bell puts this in a popover. */
-export function Inbox({ state, headingId }: { state: NotificationsState; headingId?: string }) {
+export function Inbox({ state, headingId, keepFocus = false }: { state: NotificationsState; headingId?: string; /** Move focus into the inbox when a mark call removes the focused button. The bell sets it. Off by default, so a poll never moves focus on a page. */ keepFocus?: boolean }) {
   const ownId = useId();
   const box = useRef<HTMLDivElement>(null);
   // The times move on while the popover stays open.
@@ -84,8 +88,8 @@ export function Inbox({ state, headingId }: { state: NotificationsState; heading
   const { items, unread, loading, error, actionError, busy, markRead, markAllRead } = state;
   // After a mark call the focused control can vanish. Keep focus in the inbox, so Tab and Escape still work.
   useEffect(() => {
-    if (document.activeElement === document.body) box.current?.focus();
-  }, [items, busy]);
+    if (keepFocus && document.activeElement === document.body) box.current?.focus({ preventScroll: true });
+  }, [items, busy, keepFocus]);
   return (
     <div ref={box} className="agd-notify__inbox" tabIndex={-1}>
       <div className="agd-notify__head">

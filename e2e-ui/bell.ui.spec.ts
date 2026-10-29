@@ -136,3 +136,19 @@ test("phone: the sign-in and send views fit 390px", async ({ page }) => {
   expect(await noOverflow(page)).toBe(true);
   await audit(page, "06-send-390");
 });
+
+test("bell: a failed mark call shows an alert, keeps the item unread, and can be dismissed", async ({ page }) => {
+  await page.goto("/ui/");
+  await page.evaluate((t) => sessionStorage.setItem("notify-demo-token", t), ANA);
+  expect((await send(page, BOT, "Deploy 9 finished")).status()).toBe(201);
+  await page.reload();
+  await page.route("**/api/v1/notifications/*/read", (route) => route.fulfill({ status: 500, contentType: "application/json", body: '{"error":"boom"}' }));
+  await page.getByRole("button", { name: /^Notifications, \d+ unread/ }).click();
+  const panel = page.getByRole("dialog", { name: "Notifications" });
+  const mark = panel.getByRole("button", { name: "Mark read: Deploy 9 finished" });
+  await mark.click();
+  await expect(panel.getByRole("alert")).toContainText("The change was not saved");
+  await expect(mark).toBeVisible();
+  await panel.getByRole("button", { name: "Dismiss" }).click();
+  await expect(panel.getByRole("alert")).toHaveCount(0);
+});
