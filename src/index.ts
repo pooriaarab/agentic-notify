@@ -18,3 +18,11 @@ export type {
   ResourceRef,
   SendInput,
 } from "./core/types.js";
+export { createDispatcher } from "./delivery/dispatch.js";
+export type { DispatchResult, DispatcherOptions } from "./delivery/dispatch.js";
+export { createWebhookChannel, signPayload, verifySignature, SIGNATURE_HEADER } from "./delivery/webhook.js";
+export type { WebhookOptions, WebhookTarget } from "./delivery/webhook.js";
+export { createEmailChannel, TestEmailAdapter } from "./delivery/email.js";
+export type { EmailMessage, EmailPort, EmailChannelOptions } from "./delivery/email.js";
+export { DeliveryError } from "./delivery/types.js";
+export type { DeliveryChannel, Logger } from "./delivery/types.js";

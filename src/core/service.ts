@@ -27,8 +27,10 @@ export interface NotifierOptions {
 }
 
 export interface SendResult {
-  /** Null when the inbox channel is off or the recipient muted the type. */
+  /** Null only when the recipient muted the type. */
   notification: Notification | null;
+  /** True when the notification went to the inbox. */
+  stored: boolean;
   /** Channels the delivery layer must serve. Empty when muted. */
   channels: Channel[];
   muted: boolean;
@@ -84,11 +86,10 @@ export function createNotifier(options: NotifierOptions) {
     const valid = sendInputSchema.parse(input);
     const prefs = await getPreferences(valid.recipient);
     if (prefs.muted || prefs.mutedTypes.includes(valid.type)) {
-      return { notification: null, channels: [], muted: true };
+      return { notification: null, stored: false, channels: [], muted: true };
     }
     const own = Object.hasOwn(prefs.channels, valid.type) ? prefs.channels[valid.type] : undefined;
     const channels = [...(own ?? DEFAULT_CHANNELS)];
-    if (!channels.includes("inbox")) return { notification: null, channels, muted: false };
     // Check the clock and id source too, so a bad value never reaches the store.
     const notification = notificationSchema.parse({
       ...valid,
@@ -96,10 +97,11 @@ export function createNotifier(options: NotifierOptions) {
       createdAt: now(),
       readAt: null,
     });
+    if (!channels.includes("inbox")) return { notification, stored: false, channels, muted: false };
     if (!(await store.create(NOTES, notification.id, toDoc(notification)))) {
       throw new Error("notification id collision");
     }
-    return { notification, channels, muted: false };
+    return { notification, stored: true, channels, muted: false };
   }
 
   async function list(recipient: Recipient, opts: ListOptions = {}): Promise<ListResult> {

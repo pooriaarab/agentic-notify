@@ -94,18 +94,20 @@ describe("preferences", () => {
     expect((await n.getPreferences(alice)).muted).toBe(false);
     await n.setPreferences(alice, { channels: { mention: ["webhook", "email"], comment: ["inbox", "email"] }, muted: false, mutedTypes: [] });
     const mention = await n.send(input({ type: "mention" }));
-    expect(mention.notification).toBeNull();
+    expect(mention.stored).toBe(false);
+    expect(mention.notification?.type).toBe("mention");
+    expect((await n.list(alice)).items).toHaveLength(0);
     expect(mention.channels).toEqual(["webhook", "email"]);
     const comment = await n.send(input({ type: "comment" }));
-    expect(comment.notification).not.toBeNull();
+    expect(comment.stored).toBe(true);
     expect(comment.channels).toEqual(["inbox", "email"]);
   });
 
   test("mute drops everything, per type or global", async () => {
     const n = setup();
     await n.setPreferences(alice, { channels: {}, muted: false, mutedTypes: ["comment"] });
-    expect(await n.send(input({ type: "comment" }))).toEqual({ notification: null, channels: [], muted: true });
-    expect((await n.send(input({ type: "share" }))).notification).not.toBeNull();
+    expect(await n.send(input({ type: "comment" }))).toEqual({ notification: null, stored: false, channels: [], muted: true });
+    expect((await n.send(input({ type: "share" }))).stored).toBe(true);
     await n.setPreferences(alice, { channels: {}, muted: true, mutedTypes: [] });
     expect((await n.send(input({ type: "share" }))).muted).toBe(true);
     expect((await n.list(alice)).items).toHaveLength(1);
@@ -138,7 +140,7 @@ describe("digest", () => {
 describe("bad data", () => {
   test("type names that match object prototype keys work", async () => {
     const n = setup();
-    expect((await n.send(input({ type: "constructor" }))).notification).not.toBeNull();
+    expect((await n.send(input({ type: "constructor" }))).stored).toBe(true);
     expect((await n.send(input({ type: "constructor" }))).channels).toEqual(["inbox"]);
   });
 
