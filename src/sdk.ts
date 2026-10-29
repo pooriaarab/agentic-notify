@@ -21,6 +21,16 @@ export interface SendRequest {
   body: string;
 }
 
+export interface SendResponse {
+  notification: Notification | null;
+  stored: boolean;
+  muted: boolean;
+  /** Channels the recipient chose. Absent when a dispatcher answers: see `deliveries`. */
+  channels?: string[];
+  /** Per channel outcome for the non-inbox channels. `skipped` means nothing was sent. */
+  deliveries: { channel: string; ok: boolean; error?: string; skipped?: "no_target" | "no_channel" }[];
+}
+
 export interface NotificationPage {
   items: Notification[];
   nextCursor: string | null;
@@ -41,16 +51,19 @@ export function createClient(options: ClientOptions) {
       body: body === undefined ? undefined : JSON.stringify(body),
     });
     const text = await res.text();
-    let parsed: unknown = null;
+    let parsed: unknown;
+    let valid = true;
     try {
-      parsed = text ? JSON.parse(text) : null;
+      parsed = JSON.parse(text);
     } catch {
-      // keep null
+      valid = false;
     }
     if (!res.ok) {
-      const code = (parsed as { error?: unknown } | null)?.error;
+      const code = valid ? (parsed as { error?: unknown } | null)?.error : undefined;
       throw new ApiError(res.status, typeof code === "string" ? code : "error");
     }
+    // A 2xx that is not JSON means the wrong host or a proxy. Do not call it success.
+    if (!valid) throw new ApiError(res.status, "bad_response");
     return parsed as T;
   }
 
@@ -71,8 +84,7 @@ export function createClient(options: ClientOptions) {
     digest: (since?: number) => call<Digest>("GET", `/digest${qs({ since })}`),
     getPreferences: () => call<Preferences>("GET", "/preferences"),
     setPreferences: (prefs: Preferences) => call<Preferences>("PUT", "/preferences", prefs),
-    send: (request: SendRequest) =>
-      call<{ notification: Notification | null; stored: boolean; muted: boolean }>("POST", "/notifications", request),
+    send: (request: SendRequest) => call<SendResponse>("POST", "/notifications", request),
     exportData: () => call<RecipientExport>("GET", "/me/export"),
     erase: () => call<{ notifications: number }>("DELETE", "/me"),
   };

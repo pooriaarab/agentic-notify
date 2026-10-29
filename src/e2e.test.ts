@@ -91,8 +91,22 @@ describe("worker http api", () => {
     expect(res.status).toBe(400);
     expect(await res.text()).not.toContain("SECRET-CONTENT");
     await expect(as(ANA).list({ limit: 0 })).rejects.toMatchObject({ status: 400 });
+    await expect(as(ANA).list({ cursor: "%%%" })).rejects.toMatchObject({ status: 400 });
     const notJson = await fetch(`${url}api/v1/preferences`, { method: "PUT", headers: { authorization: `Bearer ${ANA}` }, body: "{" });
     expect(notJson.status).toBe(400);
+  });
+
+  test("a channel the default worker cannot serve is reported as skipped", async () => {
+    const eve = as(EVE);
+    await eve.setPreferences({ channels: { share: ["webhook"] }, muted: false, mutedTypes: [] });
+    const r = await as(BOT).send({ ...note("eve"), type: "share" });
+    expect(r.deliveries).toEqual([{ channel: "webhook", ok: false, skipped: "no_channel" }]);
+    await eve.setPreferences({ channels: {}, muted: false, mutedTypes: [] });
+  });
+
+  test("a 200 that is not JSON is an error in the sdk", async () => {
+    const html = createClient({ baseUrl: "http://x", token: ANA, fetch: (async () => new Response("<html>", { status: 200 })) as unknown as typeof fetch });
+    await expect(html.unreadCount()).rejects.toMatchObject({ code: "bad_response" });
   });
 
   test("preferences: mute drops sends", async () => {

@@ -48,20 +48,27 @@ export function createApp(options: AppOptions) {
 
   api.get("/notifications", async (c) => {
     const q = c.req.query();
-    return c.json(
-      await notifier.list(c.var.me, {
-        unreadOnly: q.unread === "1" || q.unread === "true",
-        limit: q.limit === undefined ? undefined : z.coerce.number().int().min(1).parse(q.limit),
-        cursor: q.cursor,
-      }),
-    );
+    const limit = q.limit === undefined ? undefined : z.coerce.number().int().min(1).parse(q.limit);
+    try {
+      return c.json(await notifier.list(c.var.me, { unreadOnly: q.unread === "1" || q.unread === "true", limit, cursor: q.cursor }));
+    } catch (error) {
+      // The store throws RangeError for a cursor it cannot read. That is caller input.
+      if (error instanceof RangeError) throw new ZodError([{ code: "custom", path: ["cursor"], message: "bad cursor" }]);
+      throw error;
+    }
   });
   api.post("/notifications", async (c) => {
     const input = sendBody.parse(await json(c));
     if (!(await authorizeSend(c.var.principal, input.recipient))) return c.json({ error: "forbidden" }, 403);
     // The actor is always the caller, so a sender cannot pose as someone else.
     const full = { ...input, actor: c.var.me };
-    return c.json(options.dispatcher ? await options.dispatcher.notify(full) : await notifier.send(full), 201);
+    if (options.dispatcher) return c.json(await options.dispatcher.notify(full), 201);
+    // No dispatcher: only the inbox works. Say so for every other channel the recipient chose.
+    const sent = await notifier.send(full);
+    const deliveries = sent.channels
+      .filter((channel) => channel !== "inbox")
+      .map((channel) => ({ channel, ok: false, skipped: "no_channel" as const }));
+    return c.json({ ...sent, deliveries }, 201);
   });
   api.post("/notifications/read-all", async (c) => c.json({ marked: await notifier.markAllRead(c.var.me) }));
   api.get("/notifications/:id", async (c) => c.json(await notifier.get(c.var.me, c.req.param("id"))));
@@ -84,7 +91,6 @@ export function createApp(options: AppOptions) {
     if (error instanceof ZodError) {
       return c.json({ error: "invalid_request", issues: error.issues.map((i) => ({ path: i.path.join("."), message: i.message })) }, 400);
     }
-    if (error instanceof RangeError) return c.json({ error: "invalid_request", issues: [{ path: "", message: "out of range" }] }, 400);
     // Never log content or ids. The error name is enough.
     console.error("internal error", error instanceof Error ? error.name : "unknown");
     return c.json({ error: "internal_error" }, 500);
