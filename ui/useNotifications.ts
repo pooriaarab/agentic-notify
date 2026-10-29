@@ -38,13 +38,14 @@ export interface NotificationsState {
 function isNotification(n: unknown): n is Notification {
   if (!n || typeof n !== "object") return false;
   const r = n as Record<string, unknown>;
-  const ref = (v: unknown) => !!v && typeof v === "object" && typeof (v as { kind?: unknown }).kind === "string";
+  const ref = (v: unknown) => !!v && typeof v === "object" && typeof (v as { kind?: unknown }).kind === "string" && typeof (v as { id?: unknown }).id === "string";
   return (
     typeof r.id === "string" &&
     typeof r.type === "string" &&
     typeof r.body === "string" &&
     typeof r.createdAt === "number" &&
-    Number.isFinite(r.createdAt) &&
+    // A date past this range makes toISOString throw, and the tree would unmount.
+    Math.abs(r.createdAt) <= 8.64e15 &&
     (r.readAt === null || typeof r.readAt === "number") &&
     ref(r.actor) &&
     ref(r.resource)
@@ -169,6 +170,14 @@ export function useNotifications(options: NotifyUiOptions): NotificationsState {
 
   const markRead = useCallback((id: string) => mutate((c) => c.markRead(id)), [mutate]);
   const markAllRead = useCallback(() => mutate((c) => c.markAllRead()), [mutate]);
+
+  // A new baseUrl or limit is another server or list: drop the old answer until the new one arrives.
+  useEffect(() => {
+    setItems([]);
+    setUnread(0);
+    setLoading(true);
+    setError(null);
+  }, [baseUrl, limit]);
 
   useEffect(() => {
     alive.current = true;

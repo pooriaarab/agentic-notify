@@ -179,7 +179,11 @@ test("bell: a rate limit shows its message and pauses the polling", async ({ pag
     return route.fulfill({ status: 429, contentType: "application/json", body: '{"error":"rate_limited"}' });
   });
   await page.reload();
+  await expect(page.getByRole("button", { name: "Notifications, could not load" })).toBeVisible();
+  const before = hits;
   await page.getByRole("button", { name: "Notifications, could not load" }).click();
+  // Opening the bell refreshes at once, past the pause. Wait for that request to be answered.
+  await expect.poll(() => hits).toBeGreaterThan(before);
   const panel = page.getByRole("dialog", { name: "Notifications" });
   await expect(panel.getByRole("alert")).toContainText("Too many requests");
   // The poll (3 seconds in the demo) waits out the one-minute pause.
