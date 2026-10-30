@@ -2,6 +2,11 @@
 
 All notable changes to this package are listed here.
 
+
+## 0.6.2
+
+- Support agentic-design 0.8 and 0.9 and agentic-identity 0.9 and 0.10.
+
 ## 0.6.1
 
 Patch. No change to the SDK, CLI, MCP or HTTP shape. Version 0.6.0 was not published; its changes below first ship in 0.6.1.
