@@ -5,7 +5,7 @@
 
 Notifications for humans and agents: in-app inbox, email and webhook delivery, with a CLI, API, MCP server and SDK.
 
-**Status: 0.6.2.** Breaking for Worker auth, see "Migrating from `NOTIFY_TOKENS`" below. Breaking for 0.1.0 code and databases, see the CHANGELOG upgrade steps. Works today: the notification model, preferences and mute, digest, a store port from agentic-identity with its memory and D1 adapters, signed webhook and email delivery through a dispatcher, an HTTP API in a Worker, an SDK, a CLI, MCP tools, per-recipient export and erase, a retention sweep, and a React bell and inbox (`agentic-notify/ui`). Not done: a real email provider adapter, webhook endpoint management, and a full-page inbox app.
+**Status: 0.6.3.** Breaking for Worker auth, see "Migrating from `NOTIFY_TOKENS`" below. Breaking for 0.1.0 code and databases, see the CHANGELOG upgrade steps. Works today: the notification model, preferences and mute, digest, a store port from agentic-identity with its memory and D1 adapters, signed webhook and email delivery through a dispatcher, an HTTP API in a Worker, an SDK, a CLI, MCP tools, per-recipient export and erase, a retention sweep, and a React bell and inbox (`agentic-notify/ui`). Not done: a real email provider adapter, webhook endpoint management, and a full-page inbox app.
 
 ## Live demo
 
