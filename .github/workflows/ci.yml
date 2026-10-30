@@ -20,13 +20,19 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        node: ["20", "22"]
+        include:
+          - node: "20"
+          - node: "22"
+          - node: "22"
+            floor: true
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
           node-version: ${{ matrix.node }}
       - run: npm ci
+      - if: matrix.floor
+        run: npm install --no-save --package-lock=false agentic-design@0.8.0 agentic-identity@0.9.0
       - if: matrix.node != '20'
         run: npx playwright install --with-deps chromium
       - run: npm run ci:local

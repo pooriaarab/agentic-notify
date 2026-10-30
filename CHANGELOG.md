@@ -3,6 +3,10 @@
 All notable changes to this package are listed here.
 
 
+## 0.6.4
+
+- Accept additive agentic-design and agentic-identity releases before 1.0.
+
 ## 0.6.3
 
 - Support agentic-design 0.10 and agentic-identity 0.11 while retaining the previous lower bounds.
