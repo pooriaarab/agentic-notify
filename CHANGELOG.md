@@ -5,7 +5,7 @@ All notable changes to this package are listed here.
 
 ## 0.6.3
 
-- Support agentic-design 0.10 while retaining support for 0.8 and 0.9.
+- Support agentic-design 0.10 and agentic-identity 0.11 while retaining the previous lower bounds.
 
 ## 0.6.2
 
