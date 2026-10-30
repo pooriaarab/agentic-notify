@@ -1,6 +1,6 @@
 {
   "name": "agentic-notify",
-  "version": "0.6.2",
+  "version": "0.6.3",
   "description": "Notifications for humans and agents: in-app inbox, webhook and email delivery, with SDK, CLI, MCP server and Worker API.",
   "keywords": [
     "notifications",
@@ -77,7 +77,7 @@
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.23.0",
-    "agentic-design": ">=0.8.0 <0.10.0",
+    "agentic-design": ">=0.8.0 <0.11.0",
     "agentic-identity": ">=0.9.0 <0.11.0",
     "hono": "^4.13.14",
     "zod": "^4.6.7"
@@ -88,6 +88,8 @@
     "@types/node": "^22.0.0",
     "@types/react": "^19.3.0",
     "@types/react-dom": "^19.3.0",
+    "agentic-design": "0.10.0",
+    "agentic-identity": "0.10.0",
     "esbuild": "^0.28.2",
     "miniflare": "^4.20260730.0",
     "react": "^19.3.1",
